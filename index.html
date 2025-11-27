@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PMO Hub | v14.2 Enterprise Online</title>
+    <title>PMO Hub | v14.3 Enterprise Online</title>
     
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
@@ -55,7 +55,7 @@
     <aside class="w-64 bg-slate-900 text-slate-400 flex flex-col z-30 shadow-xl" id="sidebar">
         <div class="p-6 border-b border-slate-800 bg-slate-950 flex items-center gap-3">
             <div class="w-8 h-8 bg-blue-600 rounded flex items-center justify-center text-white font-bold"><i class="fas fa-project-diagram"></i></div>
-            <div><h1 class="text-lg font-bold text-white tracking-tight">PMO<span class="text-blue-500">Hub</span></h1><p class="text-[9px] uppercase tracking-widest font-semibold">v14.2 Online</p></div>
+            <div><h1 class="text-lg font-bold text-white tracking-tight">PMO<span class="text-blue-500">Hub</span></h1><p class="text-[9px] uppercase tracking-widest font-semibold">v14.3 Online</p></div>
         </div>
 
         <div class="py-4 border-b border-slate-800">
@@ -122,7 +122,7 @@
                     </div>
                     <div class="overflow-x-auto">
                         <table class="w-full pmo-table">
-                            <thead><tr><th>Cliente</th><th>Projeto / PEP</th><th>Status</th><th>Saúde (P/C/E)</th><th>Financeiro (Prev/Real)</th><th>Ação</th></tr></thead>
+                            <thead><tr><th>Cliente</th><th>Projeto / PEP</th><th>Status</th><th>Saúde (P/C/E)</th><th>Financeiro (Prev/Real)</th><th class="text-right">Ação</th></tr></thead>
                             <tbody id="portfolio-body">
                                 <tr><td colspan="6" class="text-center py-8 text-slate-400">Carregando dados do servidor...</td></tr>
                             </tbody>
@@ -351,7 +351,7 @@
 
     <script>
         // ===============================================
-        // CONEXÃO SUPABASE
+        // CONEXÃO SUPABASE (JÁ CONFIGURADA)
         // ===============================================
         
         const SUPABASE_URL = 'https://pmrmbddwlwhohjbvkxmf.supabase.co'; 
@@ -388,16 +388,7 @@
                 if (data && data.length > 0) {
                     projects = data.map(row => row.content);
                 } else {
-                    // Seed inicial (se banco vazio)
-                    projects = [{
-                        id: 1700000000001, name: "Migração Cloud", pm: "Ana", client: "Banco Tech", logo: "fas fa-university", 
-                        info: { pep: 'P-100', product: 'Cloud', scope: 'verde', cost: 'verde', time: 'verde', scopedesc:'OK', costdesc:'', timedesc:'' },
-                        fin: { setup: 10000, sustain: 2000 },
-                        sCurve: Array(12).fill(0).map((_,i) => ({ month: months[i], plan: (i+1)*10000, real: (i+1)*9000 })),
-                        gantt: [{name: "Fase 1", start: 0, end: 2}, {name: "Fase 2", start: 2, end: 5}],
-                        tasks: [], risks: [], canvas: {pain:'', obj:''}, stakeholders: [], raci: [], checks: {}
-                    }];
-                    save(); // Salva o seed no banco
+                    projects = []; // Sem seed automático, começa limpo
                 }
             } catch (err) {
                 console.error("Erro Supabase:", err);
@@ -415,6 +406,27 @@
                 for(const p of projects) {
                     await supabaseClient.from('projects').upsert({ id: p.id, content: p });
                 }
+            }
+        }
+        
+        // --- DELETE PROJECT ---
+        async function deleteProject(id) {
+            if(!confirm("Tem certeza que deseja excluir este projeto permanentemente?")) return;
+
+            try {
+                const { error } = await supabaseClient.from('projects').delete().eq('id', id);
+                if (error) throw error;
+
+                projects = projects.filter(p => p.id !== id);
+                renderPortfolio();
+                renderFilters();
+                
+                // Se o projeto excluído estava aberto, volta pro portfólio
+                if(currentProjId === id) goToPortfolio();
+
+            } catch (err) {
+                console.error("Erro ao excluir:", err);
+                alert("Erro ao excluir. Verifique sua conexão.");
             }
         }
 
@@ -490,7 +502,10 @@
                     <td><span class="bg-blue-100 text-blue-700 px-2 py-1 rounded text-xs font-bold">Ativo</span></td>
                     <td><div class="flex gap-1"><div class="traffic-light tl-${info.time||'verde'}"></div><div class="traffic-light tl-${info.cost||'verde'}"></div><div class="traffic-light tl-${info.scope||'verde'}"></div></div></td>
                     <td><div class="text-xs font-bold text-blue-600">${formatCurrency(lastReal)}</div></td>
-                    <td><button onclick="openProject(${p.id})" class="text-xs border px-2 py-1 rounded hover:bg-slate-100">Abrir</button></td>
+                    <td class="text-right">
+                        <button onclick="openProject(${p.id})" class="text-xs border px-2 py-1 rounded hover:bg-slate-100 font-bold text-slate-600">Abrir</button>
+                        <button onclick="deleteProject(${p.id})" class="ml-2 text-xs border border-red-200 text-red-600 px-2 py-1 rounded hover:bg-red-50" title="Excluir"><i class="fas fa-trash"></i></button>
+                    </td>
                 </tr>`;
             });
             document.getElementById('kpi-total').innerText = filtered.length;
@@ -616,7 +631,6 @@
         
         // --- FUNÇÃO DE CRIAÇÃO ROBUSTA ---
         async function createProject() {
-            // 1. Pega os valores
             const nameInput = document.getElementById('np-name');
             const pmInput = document.getElementById('np-pm');
             const clientInput = document.getElementById('np-client');
@@ -627,7 +641,6 @@
                 return;
             }
 
-            // 2. Feedback visual
             const btn = document.querySelector("button[onclick='createProject()']");
             const originalText = btn.innerText;
             btn.innerText = "Salvando...";
@@ -639,7 +652,6 @@
             
             const newId = Date.now(); 
             
-            // Objeto completo
             const newP = {
                 id: newId, 
                 name: name, 
@@ -657,30 +669,25 @@
                 checks: {}
             };
 
-            // 3. Adiciona na lista local imediatamente
             projects.push(newP);
             
             try {
-                // 4. Tenta salvar no Supabase
                 const { error } = await supabaseClient.from('projects').upsert({ id: newId, content: newP });
                 
                 if (error) throw error;
 
-                // Sucesso!
                 closeModal('modal-project');
                 goToPortfolio();
                 renderFilters();
                 
-                // Limpa os campos
                 nameInput.value = "";
                 pmInput.value = "";
                 clientInput.value = "";
 
             } catch (err) {
                 console.error("Erro ao salvar:", err);
-                alert("Erro ao salvar no banco de dados. O projeto foi criado localmente, mas pode não persistir se você recarregar.");
+                alert("Erro ao salvar no banco de dados.");
             } finally {
-                // Restaura o botão
                 btn.innerText = originalText;
                 btn.disabled = false;
             }

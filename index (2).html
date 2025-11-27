@@ -1,0 +1,691 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PMO Hub | v14.0 Enterprise Online</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f1f5f9; color: #1e293b; }
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: #e2e8f0; }
+        ::-webkit-scrollbar-thumb { background: #94a3b8; border-radius: 4px; }
+        
+        .nav-item { border-left: 4px solid transparent; transition: all 0.2s; }
+        .nav-item.active { background-color: #0f172a; color: #60a5fa; border-left-color: #3b82f6; font-weight: 600; }
+        .nav-item:hover:not(.active) { background-color: #1e293b; color: white; }
+        
+        .fade-in { animation: fadeIn 0.3s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+
+        .card { background: white; border-radius: 0.75rem; border: 1px solid #e2e8f0; box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1); }
+        .pmo-table th { background: #f8fafc; color: #64748b; font-size: 0.75rem; text-transform: uppercase; font-weight: 700; padding: 0.75rem; text-align: left; border-bottom: 1px solid #e2e8f0; }
+        .pmo-table td { padding: 0.75rem; border-bottom: 1px solid #f1f5f9; color: #334155; font-size: 0.875rem; }
+        
+        .traffic-light { width: 14px; height: 14px; border-radius: 50%; display: inline-block; border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .tl-verde { background-color: #22c55e; }
+        .tl-amarelo { background-color: #eab308; }
+        .tl-vermelho { background-color: #ef4444; }
+
+        .logo-filter-btn { transition: all 0.2s; border: 1px solid #e2e8f0; cursor: pointer; }
+        .logo-filter-btn:hover { border-color: #bfdbfe; background-color: #f8fafc; }
+        .logo-filter-btn.active { border-color: #3b82f6; background-color: #eff6ff; color: #1d4ed8; }
+
+        .gantt-bar { height: 24px; border-radius: 4px; position: absolute; top: 6px; box-shadow: 0 2px 4px rgba(0,0,0,0.15); font-size: 0.75rem; color: white; display: flex; align-items: center; padding-left: 8px; overflow: hidden; white-space: nowrap; font-weight: 600; cursor: pointer; transition: opacity 0.2s; }
+        .gantt-bar:hover { opacity: 0.9; }
+
+        .one-page-canvas { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1px; background-color: #cbd5e1; border: 1px solid #e2e8f0; }
+        .canvas-cell { background: white; padding: 1rem; }
+        .canvas-header { grid-column: span 4; background: #1e293b; color: white; padding: 1.5rem; }
+        
+        .form-label { display: block; font-size: 0.75rem; font-weight: 700; color: #64748b; text-transform: uppercase; margin-bottom: 0.25rem; }
+        .form-input { width: 100%; border: 1px solid #cbd5e1; border-radius: 0.375rem; padding: 0.5rem; font-size: 0.875rem; }
+        .form-input:focus { outline: none; border-color: #3b82f6; ring: 2px solid #bfdbfe; }
+    </style>
+</head>
+<body class="h-screen flex overflow-hidden text-slate-800 text-base">
+
+    <aside class="w-64 bg-slate-900 text-slate-400 flex flex-col z-30 shadow-xl" id="sidebar">
+        <div class="p-6 border-b border-slate-800 bg-slate-950 flex items-center gap-3">
+            <div class="w-8 h-8 bg-blue-600 rounded flex items-center justify-center text-white font-bold"><i class="fas fa-project-diagram"></i></div>
+            <div><h1 class="text-lg font-bold text-white tracking-tight">PMO<span class="text-blue-500">Hub</span></h1><p class="text-[9px] uppercase tracking-widest font-semibold">v14 Online</p></div>
+        </div>
+
+        <div class="py-4 border-b border-slate-800">
+            <p class="px-6 text-[10px] font-bold text-slate-500 uppercase mb-2">Corporativo</p>
+            <button onclick="goToPortfolio()" id="nav-portfolio" class="nav-item w-full text-left px-6 py-3 hover:bg-slate-800 hover:text-white flex items-center gap-3 text-sm active transition"><i class="fas fa-th-large w-5 text-center"></i> Portfólio</button>
+        </div>
+
+        <div id="project-nav" class="hidden flex-1 overflow-y-auto py-2">
+            <div class="px-6 py-4 mb-2 bg-slate-800/50 border-b border-slate-800">
+                <p class="text-[10px] text-blue-400 uppercase font-bold mb-1">Projeto Ativo</p>
+                <p class="text-sm font-bold text-white truncate" id="sb-proj-name">--</p>
+            </div>
+            
+            <p class="px-6 text-[10px] font-bold text-slate-500 uppercase mt-2 mb-2">Gestão</p>
+            <button onclick="showTab('dashboard')" id="nav-dashboard" class="nav-item w-full text-left px-6 py-2 flex gap-3 items-center text-sm"><i class="fas fa-chart-pie w-5"></i> Dashboard</button>
+            <button onclick="showTab('info')" id="nav-info" class="nav-item w-full text-left px-6 py-2 flex gap-3 items-center text-sm"><i class="fas fa-info-circle w-5 text-cyan-400"></i> Informações</button>
+            <button onclick="showTab('gantt')" id="nav-gantt" class="nav-item w-full text-left px-6 py-2 flex gap-3 items-center text-sm"><i class="fas fa-calendar-alt w-5 text-amber-500"></i> Cronograma</button>
+            <button onclick="showTab('lifecycle')" id="nav-lifecycle" class="nav-item w-full text-left px-6 py-2 flex gap-3 items-center text-sm"><i class="fas fa-stream w-5 text-indigo-400"></i> Ciclo de Vida</button>
+            
+            <p class="px-6 text-[10px] font-bold text-slate-500 uppercase mt-4 mb-2">Controle</p>
+            <button onclick="showTab('financial')" id="nav-financial" class="nav-item w-full text-left px-6 py-2 flex gap-3 items-center text-sm"><i class="fas fa-coins w-5 text-green-400"></i> Financeiro & Curva S</button>
+            <button onclick="showTab('risks')" id="nav-risks" class="nav-item w-full text-left px-6 py-2 flex gap-3 items-center text-sm"><i class="fas fa-exclamation-triangle w-5 text-red-400"></i> Riscos</button>
+            <button onclick="showTab('governance')" id="nav-governance" class="nav-item w-full text-left px-6 py-2 flex gap-3 items-center text-sm"><i class="fas fa-users w-5 text-pink-400"></i> Governança</button>
+            
+            <p class="px-6 text-[10px] font-bold text-slate-500 uppercase mt-4 mb-2">Ferramentas</p>
+            <button onclick="showTab('canvas')" id="nav-canvas" class="nav-item w-full text-left px-6 py-2 flex gap-3 items-center text-sm"><i class="fas fa-bolt w-5 text-yellow-400"></i> One-Page</button>
+            <button onclick="openDailyModal()" class="nav-item w-full text-left px-6 py-2 flex gap-3 items-center text-sm"><i class="fas fa-clock w-5 text-slate-400"></i> Daily Scrum</button>
+        </div>
+    </aside>
+
+    <main class="flex-1 flex flex-col h-screen overflow-hidden relative">
+        <header class="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-8 shadow-sm z-20">
+            <div><h2 id="page-title" class="text-xl font-bold text-slate-800">Portfólio</h2><p class="text-xs text-slate-500">Gestão Estratégica Centralizada</p></div>
+            <button onclick="openProjectModal()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded shadow transition text-sm font-medium flex items-center gap-2"><i class="fas fa-plus"></i> Novo Projeto</button>
+        </header>
+
+        <div class="flex-1 overflow-y-auto p-8" id="main-scroll">
+            
+            <div id="view-portfolio" class="fade-in space-y-8">
+                <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+                    <div class="flex flex-col md:flex-row justify-between items-center gap-4">
+                        <div class="flex gap-2 overflow-x-auto pb-2 md:pb-0 items-center scrollbar-hide w-full md:w-auto" id="logo-filters">
+                            </div>
+                        <div class="w-full md:w-64">
+                            <label class="text-[10px] uppercase font-bold text-slate-400 mb-1 block">Filtrar por Nome</label>
+                            <select id="text-filter" onchange="filterByName()" class="form-input w-full">
+                                <option value="all">Todos os Clientes</option>
+                                </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+                    <div class="card p-5 border-l-4 border-blue-500"><p class="text-xs font-bold text-slate-400 uppercase">Projetos Ativos</p><h3 class="text-2xl font-bold text-slate-800" id="kpi-total">...</h3></div>
+                    <div class="card p-5 border-l-4 border-green-500"><p class="text-xs font-bold text-slate-400 uppercase">Faturamento (Real)</p><h3 class="text-2xl font-bold text-green-600 truncate" id="kpi-rev">...</h3></div>
+                    <div class="card p-5 border-l-4 border-red-500"><p class="text-xs font-bold text-slate-400 uppercase">Riscos Críticos</p><h3 class="text-2xl font-bold text-red-600" id="kpi-risk">...</h3></div>
+                    <div class="card p-5 border-l-4 border-amber-500"><p class="text-xs font-bold text-slate-400 uppercase">Alertas Gerais</p><h3 class="text-2xl font-bold text-amber-600" id="kpi-alerts">...</h3></div>
+                </div>
+
+                <div class="card overflow-hidden">
+                    <div class="px-6 py-4 border-b border-slate-100 bg-slate-50 flex justify-between">
+                        <h3 class="font-bold text-slate-700">Listagem de Projetos (Nuvem)</h3>
+                        <span class="text-xs text-green-600 font-bold flex items-center gap-1"><span class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span> Online</span>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full pmo-table">
+                            <thead><tr><th>Cliente</th><th>Projeto / PEP</th><th>Status</th><th>Saúde (P/C/E)</th><th>Financeiro (Prev/Real)</th><th>Ação</th></tr></thead>
+                            <tbody id="portfolio-body">
+                                <tr><td colspan="6" class="text-center py-8 text-slate-400">Carregando dados do servidor...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div id="view-project-hub" class="hidden space-y-6">
+                
+                <div id="tab-dashboard" class="fade-in">
+                    <div class="card p-6 mb-6 bg-white border-l-8 border-blue-600">
+                        <div class="flex justify-between items-start">
+                            <div class="flex gap-4">
+                                <div id="dash-logo" class="w-16 h-16 bg-slate-50 rounded-xl border border-slate-100 flex items-center justify-center text-3xl text-slate-600"></div>
+                                <div>
+                                    <h2 class="text-2xl font-bold text-slate-800" id="dash-name">Projeto</h2>
+                                    <p class="text-sm text-slate-500 mt-1"><i class="fas fa-user-tie mr-1"></i> <span id="dash-pm">PM</span> | <i class="fas fa-building mr-1"></i> <span id="dash-client">Cliente</span></p>
+                                </div>
+                            </div>
+                            <div class="flex gap-6">
+                                <div class="text-center group relative">
+                                    <p class="text-[10px] font-bold text-slate-400 uppercase mb-1">Prazo</p>
+                                    <div id="light-time" class="traffic-light"></div>
+                                    <div id="tip-time" class="hidden group-hover:block absolute right-0 w-48 bg-slate-800 text-white text-xs p-2 rounded shadow-lg z-10 text-left mt-2"></div>
+                                </div>
+                                <div class="text-center group relative">
+                                    <p class="text-[10px] font-bold text-slate-400 uppercase mb-1">Custo</p>
+                                    <div id="light-cost" class="traffic-light"></div>
+                                    <div id="tip-cost" class="hidden group-hover:block absolute right-0 w-48 bg-slate-800 text-white text-xs p-2 rounded shadow-lg z-10 text-left mt-2"></div>
+                                </div>
+                                <div class="text-center group relative">
+                                    <p class="text-[10px] font-bold text-slate-400 uppercase mb-1">Escopo</p>
+                                    <div id="light-scope" class="traffic-light"></div>
+                                    <div id="tip-scope" class="hidden group-hover:block absolute right-0 w-48 bg-slate-800 text-white text-xs p-2 rounded shadow-lg z-10 text-left mt-2"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        <div class="card p-6 lg:col-span-2">
+                            <h4 class="font-bold text-slate-700 mb-4 flex items-center gap-2"><i class="fas fa-chart-line text-blue-500"></i> Curva S (Acumulada)</h4>
+                            <div class="h-64"><canvas id="sCurveChart"></canvas></div>
+                        </div>
+                        <div class="space-y-6">
+                            <div class="card p-6">
+                                <h4 class="font-bold text-slate-700 mb-4">Financeiro Macro</h4>
+                                <div class="space-y-3">
+                                    <div class="flex justify-between text-sm border-b pb-2"><span>Previsto Total</span><span class="font-bold" id="dash-fin-plan">R$ 0,00</span></div>
+                                    <div class="flex justify-between text-sm border-b pb-2"><span>Realizado Total</span><span class="font-bold text-green-600" id="dash-fin-real">R$ 0,00</span></div>
+                                    <div class="flex justify-between text-sm"><span>Desvio</span><span class="font-bold text-slate-500" id="dash-fin-var">R$ 0,00</span></div>
+                                </div>
+                            </div>
+                            <div class="card p-6">
+                                <h4 class="font-bold text-slate-700 mb-4">Ações Rápidas</h4>
+                                <button onclick="showTab('risks')" class="w-full text-left text-sm p-2 hover:bg-slate-50 rounded text-red-600"><i class="fas fa-exclamation-triangle mr-2"></i> Reportar Risco</button>
+                                <button onclick="showTab('financial')" class="w-full text-left text-sm p-2 hover:bg-slate-50 rounded text-green-600"><i class="fas fa-coins mr-2"></i> Atualizar Financeiro</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="tab-info" class="hidden fade-in">
+                    <div class="card p-8 max-w-5xl mx-auto">
+                        <h3 class="text-xl font-bold text-slate-800 mb-6 border-b pb-2">Informações do Projeto</h3>
+                        
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+                            <div><label class="form-label">Cliente</label><input type="text" id="info-client" class="form-input"></div>
+                            <div><label class="form-label">Produto</label><input type="text" id="info-product" class="form-input"></div>
+                            <div><label class="form-label">PEP (SAP)</label><input type="text" id="info-pep" class="form-input" placeholder="00000000-00/X00"></div>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+                            <div><label class="form-label">Responsável</label><input type="text" id="info-assignee" class="form-input"></div>
+                            <div><label class="form-label">Relator</label><input type="text" id="info-reporter" class="form-input" value="PMO Manager"></div>
+                            <div><label class="form-label">Modalidade</label><select id="info-costmode" class="form-input"><option value="CAPEX">CAPEX</option><option value="OPEX">OPEX</option></select></div>
+                        </div>
+
+                        <div class="bg-slate-50 p-6 rounded-xl border border-slate-200 mb-6">
+                            <h4 class="text-sm font-bold text-slate-700 uppercase mb-4">Status & Mitigação</h4>
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                <div>
+                                    <label class="form-label">Farol Escopo</label>
+                                    <select id="info-scope" class="form-input mb-2"><option value="verde">Verde</option><option value="amarelo">Amarelo</option><option value="vermelho">Vermelho</option></select>
+                                    <textarea id="info-scope-desc" class="form-input h-16 text-xs" placeholder="Justificativa/Plano"></textarea>
+                                </div>
+                                <div>
+                                    <label class="form-label">Farol Custo</label>
+                                    <select id="info-cost" class="form-input mb-2"><option value="verde">Verde</option><option value="amarelo">Amarelo</option><option value="vermelho">Vermelho</option></select>
+                                    <textarea id="info-cost-desc" class="form-input h-16 text-xs" placeholder="Justificativa/Plano"></textarea>
+                                </div>
+                                <div>
+                                    <label class="form-label">Farol Prazo</label>
+                                    <select id="info-time" class="form-input mb-2"><option value="verde">Verde</option><option value="amarelo">Amarelo</option><option value="vermelho">Vermelho</option></select>
+                                    <textarea id="info-time-desc" class="form-input h-16 text-xs" placeholder="Justificativa/Plano"></textarea>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="text-right">
+                            <button onclick="saveProjectInfo()" class="bg-blue-600 text-white px-6 py-2 rounded shadow hover:bg-blue-700 transition">Salvar Dados</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="tab-gantt" class="hidden fade-in">
+                    <div class="card p-6">
+                        <div class="flex justify-between items-center mb-6">
+                            <h3 class="font-bold text-slate-700">Cronograma Visual (Gantt)</h3>
+                            <button onclick="addTaskGantt()" class="text-xs bg-indigo-600 text-white px-3 py-1 rounded hover:bg-indigo-700">Adicionar Tarefa</button>
+                        </div>
+                        <div class="overflow-x-auto border rounded border-slate-200">
+                            <div class="min-w-[800px]">
+                                <div class="grid grid-cols-12 bg-slate-100 border-b border-slate-200 text-xs font-bold text-slate-500 text-center py-2">
+                                    <div>Jan</div><div>Fev</div><div>Mar</div><div>Abr</div><div>Mai</div><div>Jun</div><div>Jul</div><div>Ago</div><div>Set</div><div>Out</div><div>Nov</div><div>Dez</div>
+                                </div>
+                                <div id="gantt-rows" class="relative bg-white min-h-[300px] pt-2 px-2 space-y-2">
+                                    </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="tab-lifecycle" class="hidden fade-in">
+                    <div class="flex gap-2 overflow-x-auto mb-4 bg-white p-2 rounded shadow-sm">
+                        <button onclick="renderPhase('s2d')" class="px-4 py-2 rounded text-xs font-bold uppercase bg-slate-100 hover:bg-slate-200 transition" id="ph-s2d">S2D</button>
+                        <button onclick="renderPhase('init')" class="px-4 py-2 rounded text-xs font-bold uppercase bg-slate-100 hover:bg-slate-200 transition" id="ph-init">Iniciação</button>
+                        <button onclick="renderPhase('plan')" class="px-4 py-2 rounded text-xs font-bold uppercase bg-slate-100 hover:bg-slate-200 transition" id="ph-plan">Planejamento</button>
+                        <button onclick="renderPhase('exec')" class="px-4 py-2 rounded text-xs font-bold uppercase bg-slate-100 hover:bg-slate-200 transition" id="ph-exec">Execução</button>
+                        <button onclick="renderPhase('mon')" class="px-4 py-2 rounded text-xs font-bold uppercase bg-slate-100 hover:bg-slate-200 transition" id="ph-mon">Monitoramento</button>
+                        <button onclick="renderPhase('close')" class="px-4 py-2 rounded text-xs font-bold uppercase bg-slate-100 hover:bg-slate-200 transition" id="ph-close">Encerramento</button>
+                    </div>
+                    <div class="card p-6">
+                        <h3 class="font-bold text-lg text-slate-800 mb-4" id="ph-title">Checklist</h3>
+                        <div id="ph-checklist" class="space-y-3"></div>
+                    </div>
+                </div>
+
+                <div id="tab-financial" class="hidden fade-in">
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <div class="card p-6">
+                            <h3 class="font-bold text-slate-700 mb-4">Input da Curva S (Acumulado)</h3>
+                            <div class="overflow-y-auto max-h-[400px]">
+                                <table class="w-full text-sm text-left">
+                                    <thead><tr class="border-b"><th class="py-2">Mês</th><th class="py-2">Previsto (R$)</th><th class="py-2">Realizado (R$)</th></tr></thead>
+                                    <tbody id="scurve-input-body"></tbody>
+                                </table>
+                            </div>
+                            <button onclick="saveSCurveData()" class="mt-4 bg-blue-600 text-white px-4 py-2 rounded text-xs hover:bg-blue-700 w-full">Salvar Dados</button>
+                        </div>
+                        <div class="card p-6 h-fit">
+                            <h3 class="font-bold text-slate-700 mb-4">Orçamento Macro</h3>
+                            <div class="space-y-4">
+                                <div><label class="form-label">Valor Setup</label><input type="number" id="fin-setup" class="form-input"></div>
+                                <div><label class="form-label">Valor Sustentação</label><input type="number" id="fin-sustain" class="form-input"></div>
+                                <button onclick="saveMacroFin()" class="bg-green-600 text-white px-4 py-2 rounded text-xs hover:bg-green-700 w-full">Salvar Macro</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="tab-governance" class="hidden fade-in space-y-6">
+                    <div class="card p-6">
+                        <div class="flex justify-between mb-4"><h3 class="font-bold text-pink-600">Stakeholders</h3><button onclick="addStake()" class="text-xs border px-2 rounded hover:bg-slate-50">Adicionar</button></div>
+                        <table class="w-full pmo-table"><thead><tr><th>Nome</th><th>Papel</th><th>Ação</th></tr></thead><tbody id="stake-body"></tbody></table>
+                    </div>
+                    <div class="card p-6">
+                        <div class="flex justify-between mb-4"><h3 class="font-bold text-pink-600">Matriz RACI</h3><button onclick="addRaci()" class="text-xs border px-2 rounded hover:bg-slate-50">Adicionar</button></div>
+                        <table class="w-full pmo-table"><thead><tr><th>Atividade</th><th>R</th><th>A</th><th>C</th><th>I</th><th></th></tr></thead><tbody id="raci-body"></tbody></table>
+                    </div>
+                </div>
+
+                <div id="tab-risks" class="hidden fade-in">
+                    <div class="card p-6">
+                        <h3 class="font-bold mb-4 text-red-600">Riscos e Issues</h3>
+                        <div class="flex gap-2 mb-4">
+                            <input id="risk-in" class="form-input flex-1" placeholder="Descrição do Risco">
+                            <select id="risk-impact" class="form-input w-32"><option value="Alto">Alto</option><option value="Médio">Médio</option><option value="Baixo">Baixo</option></select>
+                            <button onclick="addRisk()" class="bg-red-500 text-white px-4 rounded text-xs hover:bg-red-600">Add</button>
+                        </div>
+                        <table class="w-full pmo-table"><thead><tr><th>Risco</th><th>Impacto</th><th>Ação</th></tr></thead><tbody id="risk-body"></tbody></table>
+                    </div>
+                </div>
+
+                <div id="tab-canvas" class="hidden fade-in">
+                    <div class="flex justify-between items-center mb-4"><h3 class="font-bold">One-Page Canvas</h3><button onclick="window.print()" class="bg-white border px-3 py-1 rounded text-xs hover:bg-slate-50">Imprimir</button></div>
+                    <div class="card p-6 mb-6"><div class="grid grid-cols-2 gap-4"><div><label class="form-label">Problema</label><textarea id="cv-pain" class="form-input h-20" oninput="saveCanvas()"></textarea></div><div><label class="form-label">Solução</label><textarea id="cv-obj" class="form-input h-20" oninput="saveCanvas()"></textarea></div></div></div>
+                    <div class="one-page-canvas rounded shadow overflow-hidden bg-white">
+                        <div class="canvas-header"><h1 class="text-xl font-bold" id="cv-out-name">Projeto</h1><p class="text-xs opacity-70">PROJECT CHARTER</p></div>
+                        <div class="canvas-cell col-span-2 border-r border-slate-200"><h4 class="text-xs font-bold text-slate-400">PROBLEMA</h4><p class="text-sm" id="cv-out-pain">...</p></div>
+                        <div class="canvas-cell col-span-2"><h4 class="text-xs font-bold text-slate-400">SOLUÇÃO</h4><p class="text-sm" id="cv-out-obj">...</p></div>
+                        <div class="canvas-cell col-span-4 border-t border-slate-200 bg-slate-50 flex justify-between text-xs"><span><strong>Previsto:</strong> <span id="cv-out-fin">R$ 0</span></span><span><strong>Realizado:</strong> <span id="cv-out-dev">R$ 0</span></span></div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </main>
+
+    <div id="modal-project" class="fixed inset-0 bg-slate-900/60 hidden items-center justify-center z-50 backdrop-blur-sm">
+        <div class="bg-white w-[500px] rounded-xl shadow-2xl p-6">
+            <h3 class="text-lg font-bold mb-4">Novo Projeto</h3>
+            <div class="grid grid-cols-2 gap-4 mb-4">
+                <input id="np-name" placeholder="Nome do Projeto" class="form-input">
+                <input id="np-pm" placeholder="Gerente" class="form-input">
+                <input id="np-client" placeholder="Cliente" class="form-input">
+            </div>
+            <div class="flex justify-end gap-2">
+                <button onclick="closeModal('modal-project')" class="text-sm px-4 py-2 text-slate-500">Cancelar</button>
+                <button onclick="createProject()" class="text-sm px-4 py-2 bg-blue-600 text-white rounded">Criar</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="modal-daily" class="fixed inset-0 bg-slate-900/60 hidden items-center justify-center z-50 backdrop-blur-sm">
+        <div class="bg-white w-96 rounded-xl shadow-2xl overflow-hidden">
+            <div class="bg-slate-800 p-4 text-white flex justify-between"><h3 class="font-bold">Daily Timer</h3><span id="timer" class="font-mono text-xl">15:00</span></div>
+            <div class="p-6 text-center">
+                <p class="text-sm text-slate-500 mb-4">1. Ontem? 2. Hoje? 3. Impedimentos?</p>
+                <button onclick="startTimer()" class="bg-blue-600 text-white px-6 py-2 rounded-full">Iniciar</button>
+                <button onclick="closeModal('modal-daily')" class="block mx-auto mt-4 text-xs text-slate-400">Fechar</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ===============================================
+        // CONEXÃO SUPABASE
+        // ===============================================
+        
+        const SUPABASE_URL = 'https://pmrmbddwlwhohjbvkxmf.supabase.co'; 
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBtcm1iZGR3bHdob2hqYnZreG1mIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQyNjMzNDgsImV4cCI6MjA3OTgzOTM0OH0.Xk5hTWaiLKnJUfUv0ePFINUpwSBSg5qptVmswpMHdng';
+
+        // ===============================================
+
+        const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        let projects = [];
+        let currentProjId = null;
+        let activeLogoFilter = 'all';
+        let chartInstance = null;
+        let timerInterval = null;
+
+        const phases = {
+            's2d': ['Check-in Comercial', 'Repositório Criado', 'Riscos Iniciais'],
+            'init': ['Kick-off', 'Stakeholders Mapeados', 'TAP Assinado'],
+            'plan': ['Cronograma', 'WBS', 'Plano Financeiro'],
+            'exec': ['Desenvolvimento', 'Testes', 'Homologação'],
+            'mon': ['Status Report', 'Controle Horas', 'Change Log'],
+            'close': ['Aceite Final', 'Lições Aprendidas', 'Encerramento Admin']
+        };
+        const months = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+        const BRL = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
+
+        // --- DB INIT ---
+        async function init() {
+            try {
+                const { data, error } = await supabase.from('projects').select('*');
+                if(error) throw error;
+                
+                if (data && data.length > 0) {
+                    projects = data.map(row => row.content);
+                } else {
+                    // Seed inicial (se banco vazio)
+                    projects = [{
+                        id: 1700000000001, name: "Migração Cloud", pm: "Ana", client: "Banco Tech", logo: "fas fa-university", 
+                        info: { pep: 'P-100', product: 'Cloud', scope: 'verde', cost: 'verde', time: 'verde', scopedesc:'OK', costdesc:'', timedesc:'' },
+                        fin: { setup: 10000, sustain: 2000 },
+                        sCurve: Array(12).fill(0).map((_,i) => ({ month: months[i], plan: (i+1)*10000, real: (i+1)*9000 })),
+                        gantt: [{name: "Fase 1", start: 0, end: 2}, {name: "Fase 2", start: 2, end: 5}],
+                        tasks: [], risks: [], canvas: {pain:'', obj:''}, stakeholders: [], raci: [], checks: {}
+                    }];
+                    save(); // Salva o seed no banco
+                }
+            } catch (err) {
+                console.error("Erro Supabase:", err);
+                alert("Erro ao conectar no banco de dados. Verifique as chaves.");
+            }
+            renderPortfolio();
+            renderFilters();
+        }
+
+        // --- SAVE LOGIC ---
+        async function save() {
+            if (currentProjId) {
+                const p = projects.find(x => x.id === currentProjId);
+                await supabase.from('projects').upsert({ id: p.id, content: p });
+            } else {
+                for(const p of projects) {
+                    await supabase.from('projects').upsert({ id: p.id, content: p });
+                }
+            }
+        }
+
+        function formatCurrency(v) { return BRL.format(v || 0); }
+
+        // --- NAVIGATION ---
+        function goToPortfolio() {
+            document.getElementById('view-portfolio').classList.remove('hidden');
+            document.getElementById('view-project-hub').classList.add('hidden');
+            document.getElementById('project-nav').classList.add('hidden');
+            activeLogoFilter = 'all'; renderPortfolio();
+        }
+        function openProject(id) {
+            currentProjId = id; const p = projects.find(x=>x.id===id);
+            document.getElementById('view-portfolio').classList.add('hidden');
+            document.getElementById('view-project-hub').classList.remove('hidden');
+            document.getElementById('project-nav').classList.remove('hidden');
+            document.getElementById('sb-proj-name').innerText = p.name;
+            showTab('dashboard');
+        }
+        function showTab(id) {
+            document.querySelectorAll('#view-project-hub > div').forEach(d => d.classList.add('hidden'));
+            document.getElementById('tab-'+id).classList.remove('hidden');
+            document.querySelectorAll('#project-nav .nav-item').forEach(b => b.classList.remove('active'));
+            document.getElementById('nav-'+id).classList.add('active');
+            
+            if(id === 'dashboard') renderDashboard();
+            if(id === 'info') loadInfoForm();
+            if(id === 'financial') renderSCurveInput();
+            if(id === 'lifecycle') renderPhase('s2d');
+            if(id === 'gantt') renderGantt();
+            if(id === 'governance') renderGov();
+            if(id === 'canvas') loadCanvas();
+            if(id === 'risks') renderRisks();
+        }
+
+        // --- PORTFOLIO & FILTERS ---
+        function renderFilters() {
+            const cont = document.getElementById('logo-filters');
+            const clients = [...new Set(projects.map(p=>p.client))];
+            let html = `<button onclick="filterLogo('all')" class="logo-filter-btn active bg-white p-2 rounded shadow-sm w-20 text-center mr-2"><i class="fas fa-globe text-xl text-slate-400"></i><div class="text-[10px] mt-1 font-bold">Todos</div></button>`;
+            clients.forEach(c => {
+                const p = projects.find(x=>x.client===c);
+                html += `<button onclick="filterLogo('${c}')" class="logo-filter-btn bg-white p-2 rounded shadow-sm w-20 text-center mr-2"><i class="${p.logo} text-xl text-slate-600"></i><div class="text-[10px] mt-1 font-bold truncate">${c}</div></button>`;
+            });
+            cont.innerHTML = html;
+
+            const sel = document.getElementById('text-filter');
+            sel.innerHTML = '<option value="all">Todos os Clientes</option>';
+            clients.forEach(c => {
+                const opt = document.createElement('option');
+                opt.value = c; opt.innerText = c;
+                sel.appendChild(opt);
+            });
+        }
+        function filterLogo(c) { activeLogoFilter = c; renderPortfolio(); }
+        function filterByName() { const val = document.getElementById('text-filter').value; filterLogo(val); }
+
+        function renderPortfolio() {
+            const tb = document.getElementById('portfolio-body'); tb.innerHTML = '';
+            let totalRev = 0, critRisk = 0, alerts = 0;
+            const filtered = activeLogoFilter === 'all' ? projects : projects.filter(p => p.client === activeLogoFilter);
+            
+            filtered.forEach(p => {
+                const lastReal = p.sCurve[p.sCurve.length-1]?.real || 0; totalRev += lastReal;
+                if(p.risks.length > 0) critRisk++;
+                const info = p.info || {};
+                if(info.time==='vermelho' || info.cost==='vermelho') alerts++;
+
+                tb.innerHTML += `<tr class="border-b hover:bg-slate-50">
+                    <td><div class="flex items-center gap-2"><i class="${p.logo} text-slate-400"></i> <span class="font-bold">${p.client}</span></div></td>
+                    <td><div class="font-bold text-slate-800">${p.name}</div><div class="text-xs text-slate-400">${info.pep||'-'}</div></td>
+                    <td><span class="bg-blue-100 text-blue-700 px-2 py-1 rounded text-xs font-bold">Ativo</span></td>
+                    <td><div class="flex gap-1"><div class="traffic-light tl-${info.time||'verde'}"></div><div class="traffic-light tl-${info.cost||'verde'}"></div><div class="traffic-light tl-${info.scope||'verde'}"></div></div></td>
+                    <td><div class="text-xs font-bold text-blue-600">${formatCurrency(lastReal)}</div></td>
+                    <td><button onclick="openProject(${p.id})" class="text-xs border px-2 py-1 rounded hover:bg-slate-100">Abrir</button></td>
+                </tr>`;
+            });
+            document.getElementById('kpi-total').innerText = filtered.length;
+            document.getElementById('kpi-rev').innerText = formatCurrency(totalRev);
+            document.getElementById('kpi-risk').innerText = critRisk;
+            document.getElementById('kpi-alerts').innerText = alerts;
+        }
+
+        // --- DASHBOARD ---
+        function renderDashboard() {
+            const p = projects.find(x=>x.id===currentProjId);
+            const info = p.info || {};
+            document.getElementById('dash-name').innerText = p.name;
+            document.getElementById('dash-pm').innerText = p.pm;
+            document.getElementById('dash-client').innerText = p.client;
+            document.getElementById('dash-logo').innerHTML = `<i class="${p.logo}"></i>`;
+
+            ['time','cost','scope'].forEach(k => {
+                document.getElementById('light-'+k).className = `traffic-light tl-${info[k]||'verde'} mt-1`;
+                document.getElementById('tip-'+k).innerText = info[k+'desc'] || "Sem mitigação.";
+            });
+
+            if(chartInstance) chartInstance.destroy();
+            const ctx = document.getElementById('sCurveChart').getContext('2d');
+            chartInstance = new Chart(ctx, { type: 'line', data: { labels: p.sCurve.map(d=>d.month), datasets: [{ label: 'Previsto', data: p.sCurve.map(d=>d.plan), borderColor: '#94a3b8', tension: 0.3 }, { label: 'Realizado', data: p.sCurve.map(d=>d.real), borderColor: '#2563eb', backgroundColor: 'rgba(37,99,235,0.1)', fill: true, tension: 0.3 }] }, options: { maintainAspectRatio: false } });
+            
+            const last = p.sCurve[p.sCurve.length-1];
+            document.getElementById('dash-fin-plan').innerText = formatCurrency(last.plan);
+            document.getElementById('dash-fin-real').innerText = formatCurrency(last.real);
+            document.getElementById('dash-fin-var').innerText = formatCurrency(last.plan - last.real);
+        }
+
+        // --- INFO FORM ---
+        function loadInfoForm() {
+            const p = projects.find(x=>x.id===currentProjId); if(!p.info) p.info = {};
+            const fields = ['client','product','pep','assignee','reporter','costmode','scope','cost','time','scope-desc', 'cost-desc', 'time-desc'];
+            fields.forEach(f => { const el = document.getElementById('info-'+f); if(el) el.value = p.info[f] || ''; });
+        }
+        function saveProjectInfo() {
+            const p = projects.find(x=>x.id===currentProjId);
+            const fields = ['client','product','pep','assignee','reporter','costmode','scope','cost','time','scope-desc', 'cost-desc', 'time-desc'];
+            fields.forEach(f => { const val = document.getElementById('info-'+f).value; p.info[f] = val; });
+            p.client = document.getElementById('info-client').value;
+            save(); alert('Salvo!'); renderDashboard();
+        }
+
+        // --- GANTT ---
+        function renderGantt() {
+            const p = projects.find(x=>x.id===currentProjId);
+            const container = document.getElementById('gantt-rows'); container.innerHTML = '';
+            container.innerHTML = `<div class="absolute inset-0 grid grid-cols-12 pointer-events-none h-full"><div class="border-r border-slate-100 h-full"></div><div class="border-r border-slate-100 h-full"></div><div class="border-r border-slate-100 h-full"></div><div class="border-r border-slate-100 h-full"></div><div class="border-r border-slate-100 h-full"></div><div class="border-r border-slate-100 h-full"></div><div class="border-r border-slate-100 h-full"></div><div class="border-r border-slate-100 h-full"></div><div class="border-r border-slate-100 h-full"></div><div class="border-r border-slate-100 h-full"></div><div class="border-r border-slate-100 h-full"></div></div>`;
+            p.gantt.forEach(task => {
+                const width = (task.end - task.start) * (100/12); const left = task.start * (100/12);
+                container.innerHTML += `<div class="relative h-10 flex items-center z-10 mb-2 group"><div class="gantt-bar bg-amber-500 hover:bg-amber-600 text-white shadow-md text-xs font-bold pl-2" style="left: ${left}%; width: ${width}%">${task.name}</div></div>`;
+            });
+        }
+        function addTaskGantt() { 
+            const name = prompt("Nome da Tarefa:"); const start = parseInt(prompt("Mês Início (0-11):")); const end = parseInt(prompt("Mês Fim (0-11):"));
+            if(name) { projects.find(x=>x.id===currentProjId).gantt.push({name, start, end}); save(); renderGantt(); }
+        }
+
+        // --- LIFECYCLE ---
+        function renderPhase(ph) {
+            const p = projects.find(x=>x.id===currentProjId);
+            const checklist = phases[ph];
+            const titleMap = {'s2d':'S2D', 'init':'Iniciação', 'plan':'Planejamento', 'exec':'Execução', 'mon':'Monitoramento', 'close':'Encerramento'};
+            document.getElementById('ph-title').innerText = titleMap[ph];
+            document.querySelectorAll('#tab-lifecycle button').forEach(b => b.classList.remove('bg-indigo-600', 'text-white'));
+            document.getElementById('ph-'+ph).classList.add('bg-indigo-600', 'text-white');
+            const div = document.getElementById('ph-checklist'); div.innerHTML = '';
+            checklist.forEach((item, i) => {
+                const key = ph + '_' + i; const checked = p.checks && p.checks[key] ? 'checked' : '';
+                div.innerHTML += `<label class="flex items-center p-3 border rounded bg-white hover:bg-slate-50 cursor-pointer"><input type="checkbox" onchange="toggleCheck('${key}', '${ph}')" ${checked} class="mr-3"> <span class="${checked?'line-through text-slate-400':''}">${item}</span></label>`;
+            });
+        }
+        function toggleCheck(key, ph) { 
+            const p = projects.find(x=>x.id===currentProjId); if(!p.checks) p.checks = {}; 
+            p.checks[key] = !p.checks[key]; save(); renderPhase(ph); 
+        }
+
+        // --- FINANCIAL SCURVE INPUT ---
+        function renderSCurveInput() {
+            const p = projects.find(x=>x.id===currentProjId);
+            const tbody = document.getElementById('scurve-input-body'); tbody.innerHTML = '';
+            p.sCurve.forEach((row, i) => {
+                tbody.innerHTML += `<tr class="border-b"><td class="py-2 px-4">${row.month}</td><td class="py-2 px-4"><input type="number" onchange="updateSCurve(${i}, 'plan', this.value)" value="${row.plan}" class="form-input w-32 py-1"></td><td class="py-2 px-4"><input type="number" onchange="updateSCurve(${i}, 'real', this.value)" value="${row.real}" class="form-input w-32 py-1"></td></tr>`;
+            });
+            document.getElementById('fin-setup').value = p.fin.setup; document.getElementById('fin-sustain').value = p.fin.sustain;
+        }
+        function updateSCurve(idx, field, val) { projects.find(x=>x.id===currentProjId).sCurve[idx][field] = parseFloat(val); save(); }
+        function saveSCurveData() { save(); alert('Gráfico Atualizado!'); }
+        function saveMacroFin() { const p = projects.find(x=>x.id===currentProjId); p.fin.setup = parseFloat(document.getElementById('fin-setup').value); p.fin.sustain = parseFloat(document.getElementById('fin-sustain').value); save(); alert('Salvo!'); }
+
+        // --- GOV/RISK/CANVAS ---
+        function renderGov() {
+            const p = projects.find(x=>x.id===currentProjId);
+            document.getElementById('stake-body').innerHTML = p.stakeholders.map((s,i)=>`<tr><td>${s.n}</td><td>${s.r}</td><td><button onclick="delStake(${i})" class="text-red-500"><i class="fas fa-trash"></i></button></td></tr>`).join('');
+            document.getElementById('raci-body').innerHTML = p.raci.map((r,i)=>`<tr><td>${r.a}</td><td>${r.r}</td><td>${r.ac}</td><td>${r.c}</td><td>${r.i}</td><td><button onclick="delRaci(${i})" class="text-red-500"><i class="fas fa-trash"></i></button></td></tr>`).join('');
+        }
+        function addStake() { const n=prompt("Nome:"); if(n) { projects.find(x=>x.id===currentProjId).stakeholders.push({n, r:'-'}); save(); renderGov(); }}
+        function delStake(i) { projects.find(x=>x.id===currentProjId).stakeholders.splice(i,1); save(); renderGov(); }
+        function addRaci() { const a=prompt("Atividade:"); if(a) { projects.find(x=>x.id===currentProjId).raci.push({a,r:'X',ac:'',c:'',i:''}); save(); renderGov(); }}
+        function delRaci(i) { projects.find(x=>x.id===currentProjId).raci.splice(i,1); save(); renderGov(); }
+
+        function renderRisks() { const p = projects.find(x=>x.id===currentProjId); document.getElementById('risk-body').innerHTML = p.risks.map((r,i)=>`<tr><td>${r.d}</td><td>${r.i}</td><td><button onclick="delRisk(${i})" class="text-red-500"><i class="fas fa-trash"></i></button></td></tr>`).join(''); }
+        function addRisk() { const d = document.getElementById('risk-in').value; const i = document.getElementById('risk-impact').value; if(d){ projects.find(x=>x.id===currentProjId).risks.push({d,i}); save(); renderRisks(); document.getElementById('risk-in').value=''; }}
+        function delRisk(i) { projects.find(x=>x.id===currentProjId).risks.splice(i,1); save(); renderRisks(); }
+
+        function loadCanvas() {
+            const p = projects.find(x=>x.id===currentProjId);
+            document.getElementById('cv-pain').value = p.canvas.pain; document.getElementById('cv-obj').value = p.canvas.obj;
+            document.getElementById('cv-out-name').innerText = p.name; document.getElementById('cv-out-pain').innerText = p.canvas.pain; document.getElementById('cv-out-obj').innerText = p.canvas.obj;
+            const last = p.sCurve[p.sCurve.length-1];
+            document.getElementById('cv-out-fin').innerText = formatCurrency(last.plan); document.getElementById('cv-out-dev').innerText = formatCurrency(last.plan - last.real);
+        }
+        function saveCanvas() { const p = projects.find(x=>x.id===currentProjId); p.canvas.pain = document.getElementById('cv-pain').value; p.canvas.obj = document.getElementById('cv-obj').value; save(); loadCanvas(); }
+
+        // --- UTILS ---
+        function openProjectModal() { document.getElementById('modal-project').classList.remove('hidden'); }
+        function openDailyModal() { document.getElementById('modal-daily').classList.remove('hidden'); }
+        function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
+        function startTimer() { let sec = 900; if(timerInterval) clearInterval(timerInterval); timerInterval = setInterval(() => { sec--; document.getElementById('timer').innerText = `${Math.floor(sec/60).toString().padStart(2,'0')}:${(sec%60).toString().padStart(2,'0')}`; if(sec<=0) clearInterval(timerInterval); }, 1000); }
+        
+        
+async function createProject() {
+    // 1. Pega os valores
+    const nameInput = document.getElementById('np-name');
+    const pmInput = document.getElementById('np-pm');
+    const clientInput = document.getElementById('np-client');
+
+    const name = nameInput.value;
+    if (!name) {
+        alert("Por favor, digite o nome do projeto.");
+        return;
+    }
+
+    // 2. Feedback visual (Muda o texto do botão)
+    const btn = document.querySelector("button[onclick='createProject()']");
+    const originalText = btn.innerText;
+    btn.innerText = "Salvando...";
+    btn.disabled = true;
+
+    const client = clientInput.value || 'Cliente Geral';
+    let icon = "fas fa-building"; 
+    if (client.toLowerCase().includes("banco")) icon = "fas fa-university";
+    
+    const newId = Date.now(); 
+    
+    // Objeto completo (Garantindo que todos os campos existem)
+    const newP = {
+        id: newId, 
+        name: name, 
+        pm: pmInput.value || 'Gerente', 
+        client: client, 
+        logo: icon,
+        fin: { setup: 0, sustain: 0 }, 
+        info: { pep: '', product: '', scope: 'verde', cost: 'verde', time: 'verde' },
+        sCurve: Array(12).fill(0).map((_, i) => ({ month: months[i], plan: 0, real: 0 })),
+        gantt: [], 
+        risks: [], 
+        canvas: { pain: '', obj: '' }, 
+        stakeholders: [], 
+        raci: [], 
+        checks: {}
+    };
+
+    // 3. Adiciona na lista local imediatamente (para parecer rápido)
+    projects.push(newP);
+    
+    try {
+        // 4. Tenta salvar no Supabase
+        const { error } = await supabase.from('projects').upsert({ id: newId, content: newP });
+        
+        if (error) throw error;
+
+        // Sucesso!
+        closeModal('modal-project');
+        goToPortfolio();
+        renderFilters();
+        
+        // Limpa os campos
+        nameInput.value = "";
+        pmInput.value = "";
+        clientInput.value = "";
+
+    } catch (err) {
+        console.error("Erro ao salvar:", err);
+        alert("Erro ao salvar no banco de dados. Verifique o console (F12).");
+    } finally {
+        // Restaura o botão
+        btn.innerText = originalText;
+        btn.disabled = false;
+    }
+}
+        window.onload = init;
+    </script>
+</body>
+</html>

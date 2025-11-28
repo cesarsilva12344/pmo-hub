@@ -1,9 +1,4 @@
-// js/metrics.js
-
 const PMO_Metrics = {
-    /**
-     * Farol Financeiro (Custo)
-     */
     calcularFarolCusto: (planejado, realizado) => {
         if (!planejado || planejado === 0) return 'verde'; 
         const razao = realizado / planejado;
@@ -12,9 +7,6 @@ const PMO_Metrics = {
         return 'vermelho';                     
     },
 
-    /**
-     * Farol de Prazo (Baseado no Gantt vs Hoje)
-     */
     calcularFarolPrazo: (tarefas) => {
         if (!tarefas || tarefas.length === 0) return 'verde';
         const fimProjeto = Math.max(...tarefas.map(t => t.end));
@@ -24,22 +16,17 @@ const PMO_Metrics = {
         return 'verde';
     },
 
-    /**
-     * NOVO: Farol de Esforço (Horas)
-     * Regra: 
-     * - Até 90% das horas consumidas: Verde
-     * - Entre 90% e 100%: Amarelo (Atenção, vai estourar)
-     * - Acima de 100%: Vermelho (Estourou)
-     */
     calcularFarolHoras: (horasPlan, horasReal) => {
-        // Se não tiver horas cadastradas, assume neutro
         if (!horasPlan || horasPlan == 0) return 'verde';
-        
         const consumo = horasReal / horasPlan;
+        if (consumo > 1.0) return 'vermelho'; 
+        if (consumo >= 0.9) return 'amarelo'; 
+        return 'verde'; 
+    },
 
-        if (consumo > 1.0) return 'vermelho'; // Estourou as horas
-        if (consumo >= 0.9) return 'amarelo'; // Está perigoso (90%+)
-        return 'verde'; // Confortável
+    // NOVO: Score de Risco (1 a 9)
+    calcularScoreRisco: (prob, imp) => {
+        return prob * imp;
     },
 
     formatarCompacto: (valor) => {

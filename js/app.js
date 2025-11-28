@@ -13,7 +13,7 @@ const phases = {
 };
 const months = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
 
-// --- CORREÇÃO: FormatCurrency definido no topo ---
+// CORREÇÃO 1: FormatCurrency definido no topo
 const BRL = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
 window.formatCurrency = function(v) {
     return BRL.format(v || 0);
@@ -53,10 +53,8 @@ window.save = async function() {
     try {
         if (currentProjId) {
             const p = projects.find(x => x.id === currentProjId);
-            // Salva apenas o projeto atual
             await supabaseClient.from('projects').upsert({ id: p.id, content: p });
         } else {
-            // Fallback: Salva todos (use com cautela)
             for(const p of projects) {
                 await supabaseClient.from('projects').upsert({ id: p.id, content: p });
             }
@@ -83,7 +81,7 @@ window.createProject = async function() {
     let icon = "fas fa-building"; 
     if (client.toLowerCase().includes("banco")) icon = "fas fa-university";
     
-    // Gera ID baseado em tempo (inteiro)
+    // CORREÇÃO 2: ID Numérico
     const newId = Date.now(); 
     
     const newP = {
@@ -97,11 +95,9 @@ window.createProject = async function() {
     };
 
     try {
-        // Tenta salvar no Supabase PRIMEIRO
         const { error } = await supabaseClient.from('projects').upsert({ id: newId, content: newP });
         if (error) throw error;
 
-        // Se deu certo, atualiza localmente
         projects.push(newP);
         window.closeModal('modal-project');
         window.goToPortfolio();
@@ -215,11 +211,9 @@ window.renderPortfolio = function() {
     filtered.forEach(p => {
         const lastReal = p.sCurve?.[p.sCurve.length-1]?.real || 0;
         const info = p.info || {};
-        // CORREÇÃO: window.formatCurrency
         tb.innerHTML += `<tr class="border-b hover:bg-slate-50"><td><div class="flex items-center gap-2"><i class="${p.logo}"></i> <span class="font-bold">${p.client}</span></div></td><td><div class="font-bold">${p.name}</div></td><td><span class="text-xs bg-slate-200 px-2 rounded">${p.model || 'Trad'}</span></td><td><span class="bg-blue-100 text-blue-700 px-2 font-bold text-xs">Ativo</span></td><td><div class="flex gap-1"><div class="traffic-light tl-${info.time||'verde'}"></div><div class="traffic-light tl-${info.cost||'verde'}"></div></div></td><td><div class="text-xs font-bold text-blue-600">${window.formatCurrency(lastReal)}</div></td><td class="text-right"><button onclick="window.openProject(${p.id})" class="text-xs border px-2 py-1 rounded hover:bg-slate-100 mr-2">Abrir</button><button onclick="window.deleteProject(${p.id})" class="text-red-500"><i class="fas fa-trash"></i></button></td></tr>`;
     });
     
-    // Atualiza KPIs simples
     document.getElementById('kpi-total').innerText = filtered.length;
 }
 
@@ -265,7 +259,7 @@ window.renderAdminView = function() {
     adminChart2 = new Chart(ctx2, { type: 'doughnut', data: { labels: Object.keys(models), datasets: [{ data: Object.values(models), backgroundColor: ['#3b82f6', '#8b5cf6', '#10b981'] }] } });
 }
 
-// MATRIZ DE RISCO
+// CORREÇÃO 3: FUNÇÃO DE RISCOS ROBUSTA
 window.renderRiskMatrix = function() {
     const p = projects.find(x => x.id === currentProjId);
     const list = document.getElementById('risk-list');
@@ -297,40 +291,26 @@ window.renderRiskMatrix = function() {
     });
 }
 
-ndow.addRiskMatrix = function() {
-    // 1. Pega os valores
+window.addRiskMatrix = function() {
     const descInput = document.getElementById('risk-desc');
     const desc = descInput.value;
     const prob = parseInt(document.getElementById('risk-prob').value);
     const imp = parseInt(document.getElementById('risk-imp').value);
     
-    // 2. Validação: Se não tiver descrição, avisa e para.
     if (!desc) {
-        alert("Por favor, digite a descrição do risco antes de salvar.");
+        alert("Por favor, digite a descrição do risco.");
         return;
     }
 
-    // 3. Encontra o projeto atual com segurança
     const p = projects.find(x => x.id === currentProjId);
-    
-    if (!p) {
-        console.error("Erro: Projeto não encontrado no ID", currentProjId);
-        alert("Erro interno: Projeto perdido. Tente recarregar a página (F5).");
-        return;
-    }
-
-    // 4. Inicializa o array se não existir
+    if (!p) { alert("Erro: Projeto não encontrado."); return; }
     if (!p.risks) p.risks = [];
 
-    // 5. Adiciona e Salva
     p.risks.push({ desc, prob, imp, type: 'risk' }); 
-    
-    window.save();              // Salva no banco
-    window.renderRiskMatrix();  // Atualiza a tela visualmente
-    
-    // 6. Limpa o campo
+    window.save();
+    window.renderRiskMatrix();
     descInput.value = '';
-    console.log("Risco adicionado com sucesso!");
+}
 
 window.turnIssue = function(idx) {
     if(!confirm("Transformar este Risco em Issue (Problema Real)?")) return;

@@ -297,20 +297,40 @@ window.renderRiskMatrix = function() {
     });
 }
 
-window.addRiskMatrix = function() {
-    const desc = document.getElementById('risk-desc').value;
+ndow.addRiskMatrix = function() {
+    // 1. Pega os valores
+    const descInput = document.getElementById('risk-desc');
+    const desc = descInput.value;
     const prob = parseInt(document.getElementById('risk-prob').value);
     const imp = parseInt(document.getElementById('risk-imp').value);
     
-    if(desc) {
-        const p = projects.find(x => x.id === currentProjId);
-        if(!p.risks) p.risks = [];
-        p.risks.push({ desc, prob, imp, type: 'risk' }); 
-        window.save();
-        window.renderRiskMatrix();
-        document.getElementById('risk-desc').value = '';
+    // 2. Validação: Se não tiver descrição, avisa e para.
+    if (!desc) {
+        alert("Por favor, digite a descrição do risco antes de salvar.");
+        return;
     }
-}
+
+    // 3. Encontra o projeto atual com segurança
+    const p = projects.find(x => x.id === currentProjId);
+    
+    if (!p) {
+        console.error("Erro: Projeto não encontrado no ID", currentProjId);
+        alert("Erro interno: Projeto perdido. Tente recarregar a página (F5).");
+        return;
+    }
+
+    // 4. Inicializa o array se não existir
+    if (!p.risks) p.risks = [];
+
+    // 5. Adiciona e Salva
+    p.risks.push({ desc, prob, imp, type: 'risk' }); 
+    
+    window.save();              // Salva no banco
+    window.renderRiskMatrix();  // Atualiza a tela visualmente
+    
+    // 6. Limpa o campo
+    descInput.value = '';
+    console.log("Risco adicionado com sucesso!");
 
 window.turnIssue = function(idx) {
     if(!confirm("Transformar este Risco em Issue (Problema Real)?")) return;

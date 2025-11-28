@@ -1,4 +1,4 @@
-// js/app.js
+/app.js
 
 const supabaseClient = window.supabase.createClient(PMO_CONFIG.SUPABASE_URL, PMO_CONFIG.SUPABASE_KEY);
 

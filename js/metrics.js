@@ -1,4 +1,5 @@
-const PMO_Metrics = {
+// Define Metrics no escopo global
+window.PMO_Metrics = {
     calcularFarolCusto: (planejado, realizado) => {
         if (!planejado || planejado === 0) return 'verde'; 
         const razao = realizado / planejado;
@@ -24,7 +25,6 @@ const PMO_Metrics = {
         return 'verde'; 
     },
 
-    // NOVO: Score de Risco (1 a 9)
     calcularScoreRisco: (prob, imp) => {
         return prob * imp;
     },

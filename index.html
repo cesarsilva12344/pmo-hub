@@ -5,11 +5,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>PMO Hub | v15.0 Enterprise</title>
     
+    <!-- Bibliotecas Externas -->
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+    <!-- Seu Estilo Modularizado -->
     <link rel="stylesheet" href="css/style.css">
 </head>
 <body class="h-screen flex overflow-hidden text-slate-800 text-base">
@@ -200,13 +203,22 @@
         // Inicialização final protegida
         window.onload = async () => {
             // Garante que Auth existe antes de chamar
-            if (window.Auth) {
-                await window.Auth.checkSession();
-                init();
-            } else {
-                console.error("Erro crítico: Módulo Auth não carregado.");
-                alert("Erro de carregamento. Tente recarregar a página (F5).");
-            }
+            // Tentativa de "espera ativa" simples caso o script demore a carregar
+            let attempts = 0;
+            const checkAuth = setInterval(async () => {
+                if (window.Auth) {
+                    clearInterval(checkAuth);
+                    await window.Auth.checkSession();
+                    init();
+                } else {
+                    attempts++;
+                    if (attempts > 50) { // Desiste após 5 segundos
+                        clearInterval(checkAuth);
+                        console.error("Erro crítico: Módulo Auth não carregado.");
+                        alert("Erro de carregamento. Tente recarregar a página (F5).");
+                    }
+                }
+            }, 100);
         };
     </script>
 </body>

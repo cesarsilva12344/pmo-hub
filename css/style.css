@@ -1,0 +1,36 @@
+/* css/style.css */
+body { font-family: 'Inter', sans-serif; background-color: #f1f5f9; color: #1e293b; }
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: #e2e8f0; }
+::-webkit-scrollbar-thumb { background: #94a3b8; border-radius: 4px; }
+
+.nav-item { border-left: 4px solid transparent; transition: all 0.2s; }
+.nav-item.active { background-color: #0f172a; color: #60a5fa; border-left-color: #3b82f6; font-weight: 600; }
+.nav-item:hover:not(.active) { background-color: #1e293b; color: white; }
+
+.fade-in { animation: fadeIn 0.3s ease-out; }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+
+.card { background: white; border-radius: 0.75rem; border: 1px solid #e2e8f0; box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1); }
+.pmo-table th { background: #f8fafc; color: #64748b; font-size: 0.75rem; text-transform: uppercase; font-weight: 700; padding: 0.75rem; text-align: left; border-bottom: 1px solid #e2e8f0; }
+.pmo-table td { padding: 0.75rem; border-bottom: 1px solid #f1f5f9; color: #334155; font-size: 0.875rem; }
+
+.traffic-light { width: 14px; height: 14px; border-radius: 50%; display: inline-block; border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+.tl-verde { background-color: #22c55e; }
+.tl-amarelo { background-color: #eab308; }
+.tl-vermelho { background-color: #ef4444; }
+
+.logo-filter-btn { transition: all 0.2s; border: 1px solid #e2e8f0; cursor: pointer; }
+.logo-filter-btn:hover { border-color: #bfdbfe; background-color: #f8fafc; }
+.logo-filter-btn.active { border-color: #3b82f6; background-color: #eff6ff; color: #1d4ed8; }
+
+.gantt-bar { height: 24px; border-radius: 4px; position: absolute; top: 6px; box-shadow: 0 2px 4px rgba(0,0,0,0.15); font-size: 0.75rem; color: white; display: flex; align-items: center; padding-left: 8px; overflow: hidden; white-space: nowrap; font-weight: 600; cursor: pointer; transition: opacity 0.2s; }
+.gantt-bar:hover { opacity: 0.9; }
+
+.one-page-canvas { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1px; background-color: #cbd5e1; border: 1px solid #e2e8f0; }
+.canvas-cell { background: white; padding: 1rem; }
+.canvas-header { grid-column: span 4; background: #1e293b; color: white; padding: 1.5rem; }
+
+.form-label { display: block; font-size: 0.75rem; font-weight: 700; color: #64748b; text-transform: uppercase; margin-bottom: 0.25rem; }
+.form-input { width: 100%; border: 1px solid #cbd5e1; border-radius: 0.375rem; padding: 0.5rem; font-size: 0.875rem; }
+.form-input:focus { outline: none; border-color: #3b82f6; ring: 2px solid #bfdbfe; }

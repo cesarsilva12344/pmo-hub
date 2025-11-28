@@ -1,25 +1,20 @@
+/* css/style.css */
 body { font-family: 'Inter', sans-serif; background-color: #f1f5f9; color: #1e293b; }
 ::-webkit-scrollbar { width: 8px; height: 8px; }
 ::-webkit-scrollbar-track { background: #e2e8f0; }
 ::-webkit-scrollbar-thumb { background: #94a3b8; border-radius: 4px; }
 
-/* Navegação */
-.nav-item { border-left: 4px solid transparent; transition: all 0.2s; cursor: pointer; }
+.nav-item { border-left: 4px solid transparent; transition: all 0.2s; }
 .nav-item.active { background-color: #0f172a; color: #60a5fa; border-left-color: #3b82f6; font-weight: 600; }
 .nav-item:hover:not(.active) { background-color: #1e293b; color: white; }
 
 .fade-in { animation: fadeIn 0.3s ease-out; }
 @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
-.card { background: white; border-radius: 0.75rem; border: 1px solid #e2e8f0; box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1); }
 
-/* Tabelas e Forms */
+.card { background: white; border-radius: 0.75rem; border: 1px solid #e2e8f0; box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1); }
 .pmo-table th { background: #f8fafc; color: #64748b; font-size: 0.75rem; text-transform: uppercase; font-weight: 700; padding: 0.75rem; text-align: left; border-bottom: 1px solid #e2e8f0; }
 .pmo-table td { padding: 0.75rem; border-bottom: 1px solid #f1f5f9; color: #334155; font-size: 0.875rem; }
-.form-label { display: block; font-size: 0.75rem; font-weight: 700; color: #64748b; text-transform: uppercase; margin-bottom: 0.25rem; }
-.form-input { width: 100%; border: 1px solid #cbd5e1; border-radius: 0.375rem; padding: 0.5rem; font-size: 0.875rem; }
-.form-input:focus { outline: none; border-color: #3b82f6; ring: 2px solid #bfdbfe; }
 
-/* Componentes Visuais */
 .traffic-light { width: 14px; height: 14px; border-radius: 50%; display: inline-block; border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
 .tl-verde { background-color: #22c55e; }
 .tl-amarelo { background-color: #eab308; }
@@ -29,24 +24,13 @@ body { font-family: 'Inter', sans-serif; background-color: #f1f5f9; color: #1e29
 .logo-filter-btn:hover { border-color: #bfdbfe; background-color: #f8fafc; }
 .logo-filter-btn.active { border-color: #3b82f6; background-color: #eff6ff; color: #1d4ed8; }
 
-/* GANTT (Tradicional) */
 .gantt-bar { height: 24px; border-radius: 4px; position: absolute; top: 6px; box-shadow: 0 2px 4px rgba(0,0,0,0.15); font-size: 0.75rem; color: white; display: flex; align-items: center; padding-left: 8px; overflow: hidden; white-space: nowrap; font-weight: 600; cursor: pointer; transition: opacity 0.2s; }
 .gantt-bar:hover { opacity: 0.9; }
 
-/* MATRIZ DE RISCO (Heatmap 3x3) */
-.risk-matrix { display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(3, 100px); gap: 2px; border: 2px solid #e2e8f0; border-radius: 8px; overflow: hidden; background: #fff; }
-.risk-cell { display: flex; align-items: center; justify-content: center; position: relative; border: 1px dashed #f1f5f9; transition: all 0.2s; }
-.risk-cell:hover { opacity: 0.9; }
-/* Cores do Heatmap */
-.rc-low { background-color: #dcfce7; }   /* Verde Claro */
-.rc-med { background-color: #fef9c3; }   /* Amarelo Claro */
-.rc-high { background-color: #fee2e2; }  /* Vermelho Claro */
-.risk-dot { width: 24px; height: 24px; background: #ef4444; color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: bold; border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.2); position: absolute; cursor: pointer; transition: transform 0.2s; }
-.risk-dot:hover { transform: scale(1.2); z-index: 10; }
+.one-page-canvas { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1px; background-color: #cbd5e1; border: 1px solid #e2e8f0; }
+.canvas-cell { background: white; padding: 1rem; }
+.canvas-header { grid-column: span 4; background: #1e293b; color: white; padding: 1.5rem; }
 
-/* KANBAN (Ágil) */
-.kanban-board { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; height: 400px; }
-.kanban-col { background: #f8fafc; border-radius: 0.5rem; padding: 1rem; display: flex; flex-direction: column; gap: 0.5rem; border: 1px solid #e2e8f0; }
-.kanban-card { background: white; padding: 0.75rem; border-radius: 0.375rem; border: 1px solid #e2e8f0; box-shadow: 0 1px 2px rgba(0,0,0,0.05); font-size: 0.875rem; cursor: grab; border-left: 3px solid #3b82f6; }
-.kanban-card:active { cursor: grabbing; }
-.kanban-header { font-size: 0.75rem; font-weight: 700; text-transform: uppercase; color: #64748b; margin-bottom: 0.5rem; display: flex; justify-content: space-between; }
+.form-label { display: block; font-size: 0.75rem; font-weight: 700; color: #64748b; text-transform: uppercase; margin-bottom: 0.25rem; }
+.form-input { width: 100%; border: 1px solid #cbd5e1; border-radius: 0.375rem; padding: 0.5rem; font-size: 0.875rem; }
+.form-input:focus { outline: none; border-color: #3b82f6; ring: 2px solid #bfdbfe; }

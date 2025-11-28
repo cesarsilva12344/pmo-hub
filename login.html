@@ -65,8 +65,8 @@
 
         // Verifica se já está logado ao abrir
         window.onload = async () => {
-            const { data } = await authClient.auth.getSession();
-            if (data.session) window.location.href = 'index.html';
+            const { data } = await window.supabaseClient.auth.getSession();
+            if (data && data.session) window.location.href = 'index.html';
         };
 
         function toggleTab(mode) {
@@ -114,17 +114,17 @@
 
             try {
                 if (currentMode === 'login') {
-                    await Auth.signIn(email, password);
+                    await window.Auth.signIn(email, password);
                     window.location.href = 'index.html';
                 } 
                 else if (currentMode === 'signup') {
                     if (!password) throw new Error("Crie uma senha.");
-                    await Auth.signUp(email, password);
+                    await window.Auth.signUp(email, password);
                     alert("Conta criada com sucesso! Você já está logado.");
                     window.location.href = 'index.html';
                 } 
                 else if (currentMode === 'reset') {
-                    await Auth.resetPassword(email);
+                    await window.Auth.resetPassword(email);
                     alert("E-mail de recuperação enviado! Verifique sua caixa de entrada.");
                     toggleTab('login');
                 }

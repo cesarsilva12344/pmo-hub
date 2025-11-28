@@ -1,53 +1,56 @@
-// Inicializa o cliente usando a config global
-const authClient = window.supabase.createClient(window.PMO_CONFIG.SUPABASE_URL, window.PMO_CONFIG.SUPABASE_KEY);
+// js/auth.js
 
-// Define Auth no escopo global (window)
+if (!window.supabaseClient) {
+    window.supabaseClient = window.supabase.createClient(window.PMO_CONFIG.SUPABASE_URL, window.PMO_CONFIG.SUPABASE_KEY);
+}
+
 window.Auth = {
     userProfile: null,
+    originalRole: null,
 
     signIn: async (email, password) => {
-        const { data, error } = await authClient.auth.signInWithPassword({ email, password });
+        const { data, error } = await window.supabaseClient.auth.signInWithPassword({ email, password });
         if (error) throw error;
         return data;
     },
 
     signUp: async (email, password) => {
-        const { data, error } = await authClient.auth.signUp({ email, password });
+        const { data, error } = await window.supabaseClient.auth.signUp({ email, password });
         if (error) throw error;
         return data;
     },
 
     resetPassword: async (email) => {
-        const { data, error } = await authClient.auth.resetPasswordForEmail(email, { redirectTo: window.location.href.replace('login.html', 'index.html') });
+        const { data, error } = await window.supabaseClient.auth.resetPasswordForEmail(email, { 
+            redirectTo: window.location.href.replace('login.html', 'index.html') 
+        });
         if (error) throw error;
         return data;
     },
 
     signOut: async () => {
-        await authClient.auth.signOut();
+        await window.supabaseClient.auth.signOut();
         window.location.href = 'login.html';
     },
 
     checkSession: async () => {
-        const { data: { session } } = await authClient.auth.getSession();
+        const { data: { session } } = await window.supabaseClient.auth.getSession();
         
-        // Proteção de rota: se não tem sessão e não está no login, vai pro login
         if (!session && !window.location.href.includes('login.html')) {
             window.location.href = 'login.html';
             return null;
         }
 
-        // Se tem sessão
         if (session) {
             try {
-                // Busca perfil
-                const { data: profile } = await authClient.from('profiles').select('*').eq('id', session.user.id).single();
-                window.Auth.userProfile = profile;
+                const { data: profile } = await window.supabaseClient.from('profiles').select('*').eq('id', session.user.id).single();
+                window.Auth.userProfile = profile || { role: 'gestor' };
+                window.Auth.originalRole = window.Auth.userProfile.role;
             } catch (err) {
                 console.warn("Perfil não encontrado, usando padrão gestor.");
+                window.Auth.userProfile = { role: 'gestor' };
             }
             
-            // Se está no login com sessão válida, vai pro index
             if(window.location.href.includes('login.html')) {
                 window.location.href = 'index.html';
             }
@@ -57,5 +60,15 @@ window.Auth = {
     
     isAdmin: () => {
         return window.Auth.userProfile && window.Auth.userProfile.role === 'admin';
+    },
+
+    switchProfileView: (newRole) => {
+        if (window.Auth.originalRole !== 'admin') {
+            alert("Apenas administradores podem trocar de visão.");
+            return;
+        }
+        window.Auth.userProfile.role = newRole;
+        alert(`Visão alterada para: ${newRole.toUpperCase()}`);
+        location.reload(); 
     }
 };

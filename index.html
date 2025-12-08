@@ -24,149 +24,191 @@
             });
         }
     </script>
-    <script type="module">
-</head >
-</aside >
+    <script type="module" src="js/app.js"></script>
+</head>
 
-<!-- Main Content -->
-<main class="flex-1 overflow-auto p-8 relative">
-    <!-- Dashboard View -->
-    <section id="view-dashboard" class="view-section active">
-        <header class="flex justify-between items-center mb-8">
-            <h1 class="text-3xl font-bold text-gray-800">Visão Geral do Portfólio</h1>
-            <div class="flex gap-4">
-                <button id="btn-new-project" class="bg-blue-600 text-white px-4 py-2 rounded shadow hover:bg-blue-700">+
-                    Novo
-                    Projeto</button>
-            </div>
-        </header>
-
-        <!-- Stats Grid -->
-        <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-            <div class="bg-white p-6 rounded-xl shadow-sm">
-                <h3 class="text-sm text-gray-500 mb-1">Total de Projetos</h3>
-                <p class="text-2xl font-bold" id="kpi-total-projects">-</p>
-            </div>
-            <div class="bg-white p-6 rounded-xl shadow-sm">
-                <h3 class="text-sm text-gray-500 mb-1">Em Risco</h3>
-                <p class="text-2xl font-bold text-red-500" id="kpi-risk-projects">-</p>
-            </div>
-            <div class="bg-white p-6 rounded-xl shadow-sm">
-                <h3 class="text-sm text-gray-500 mb-1">Concluídos (YTD)</h3>
-                <p class="text-2xl font-bold text-green-500">8</p>
-            </div>
-            <div class="bg-white p-6 rounded-xl shadow-sm">
-                <h3 class="text-sm text-gray-500 mb-1">Orçamento Executado</h3>
-                <p class="text-2xl font-bold" id="kpi-budget">-</p>
-            </div>
+<body class="bg-slate-100 font-inter flex h-screen overflow-hidden">
+    <!-- Sidebar -->
+    <aside class="w-64 bg-slate-900 text-white flex flex-col shadow-xl z-20">
+        <div class="p-6">
+            <h1 class="text-2xl font-bold bg-gradient-to-r from-blue-400 to-teal-400 bg-clip-text text-transparent">
+                PMO Hub
+            </h1>
+            <p class="text-xs text-slate-400 mt-1">Enterprise v15.1</p>
         </div>
 
-        <!-- Charts Section -->
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <div class="bg-white p-6 rounded-xl shadow-sm">
-                <h3 class="font-bold mb-4">Investimento por Cliente</h3>
-                <div id="chart-investment" class="h-64 bg-gray-50 flex items-center justify-center">Gráfico
-                    Carregando...</div>
+        <nav class="flex-1 px-4 space-y-2">
+            <a href="#" id="nav-dashboard"
+                class="flex items-center gap-3 px-4 py-3 rounded-lg bg-slate-800 text-white shadow-sm transition-all">
+                <span>📊</span> Visão Geral
+            </a>
+            <a href="#" id="nav-projects"
+                class="flex items-center gap-3 px-4 py-3 rounded-lg text-slate-300 hover:bg-slate-800 hover:text-white transition-all">
+                <span>🚀</span> Projetos
+            </a>
+            <a href="#" id="nav-risks"
+                class="flex items-center gap-3 px-4 py-3 rounded-lg text-slate-300 hover:bg-slate-800 hover:text-white transition-all">
+                <span>⚠️</span> Riscos
+            </a>
+            <a href="#" id="nav-financial"
+                class="flex items-center gap-3 px-4 py-3 rounded-lg text-slate-300 hover:bg-slate-800 hover:text-white transition-all">
+                <span>💰</span> Financeiro
+            </a>
+            <a href="#" id="nav-resources"
+                class="flex items-center gap-3 px-4 py-3 rounded-lg text-slate-300 hover:bg-slate-800 hover:text-white transition-all">
+                <span>👥</span> Recursos
+            </a>
+            <div class="pt-4 border-t border-slate-700 mt-4">
+                <a href="#" id="nav-admin"
+                    class="flex items-center gap-3 px-4 py-3 rounded-lg text-slate-300 hover:bg-slate-800 hover:text-white transition-all">
+                    <span>⚙️</span> Configurações
+                </a>
             </div>
-            <div class="bg-white p-6 rounded-xl shadow-sm">
-                <h3 class="font-bold mb-4">Saúde dos Projetos</h3>
-                <div id="chart-health" class="h-64 bg-gray-50 flex items-center justify-center">Gráfico
-                    Carregando...</div>
-            </div>
-            <!-- Status Reports -->
-            <div class="mt-8 bg-white p-6 rounded-xl shadow-sm">
-                <div class="flex justify-between items-center mb-4">
-                    <h3 class="font-bold">Últimos Status Reports (Gerados Automaticamente)</h3>
-                    <button id="btn-gen-report"
-                        class="text-sm bg-gray-100 hover:bg-gray-200 px-3 py-1 rounded border">Simular Geração
-                        Manual</button>
-                </div>
-                <div class="overflow-x-auto">
-                    <table class="w-full text-sm text-left">
-                        <thead class="text-gray-500 border-b">
-                            <tr>
-                                <th class="py-2">Data</th>
-                                <th class="py-2">Projeto</th>
-                                <th class="py-2">Saúde</th>
-                                <th class="py-2">Autor</th>
-                                <th class="py-2">Ação</th>
-                            </tr>
-                        </thead>
-                        <tbody id="report-list">
-                            <!-- JS Generated -->
-                            <tr class="border-b">
-                                <td class="py-3">Loading...</td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-    </section>
+        </nav>
 
-    <!-- Risks View (Heatmap) -->
-    <section id="view-risks" class="view-section hidden">
-        <header class="mb-8">
-            <h1 class="text-3xl font-bold text-gray-800">Matriz de Riscos & Governança</h1>
-        </header>
-        <div class="flex gap-8">
-            <!-- Matrix -->
-            <div class="bg-white p-6 rounded-xl shadow-sm">
-                <h3 class="font-bold mb-4 text-center">Matriz Probabilidade x Impacto</h3>
-                <div class="relative">
-                    <!-- Y Axis Label -->
-                    <div class="absolute -left-8 top-1/2 -rotate-90 text-sm font-bold text-gray-500">Probabilidade
-                    </div>
-                    <!-- X Axis Label -->
-                    <div class="absolute -bottom-8 left-1/2 -translate-x-1/2 text-sm font-bold text-gray-500">
-                        Impacto</div>
-
-                    <div id="risk-matrix" class="risk-matrix border-2 border-slate-300">
-                        <!-- Matrix Cells generated by JS -->
-                    </div>
-                </div>
-            </div>
-
-            <!-- Risk List -->
-            <div class="flex-1 bg-white p-6 rounded-xl shadow-sm">
-                <div class="flex justify-between items-center mb-4">
-                    <h3 class="font-bold">Riscos Críticos</h3>
-                    <button class="text-sm text-blue-600 hover:underline">+ Novo Risco</button>
-                </div>
-                <div id="risk-list" class="space-y-2">
-                    <!-- Risk Items -->
-                    <p class="text-gray-500 text-sm">Nenhum risco crítico identificado.</p>
-                </div>
-            </div>
+        <div class="p-4 border-t border-slate-700">
+            <button id="logoutBtn"
+                class="flex items-center gap-2 text-sm text-slate-400 hover:text-white transition-colors w-full">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                </svg>
+                Encerrar Sessão
+            </button>
         </div>
-        <!-- Pipeline View -->
-        <!-- Pipeline View -->
-        <section id="view-projects" class="view-section hidden">
+    </aside>
+
+    <!-- Main Content -->
+    <main class="flex-1 overflow-auto p-8 relative">
+        <!-- Dashboard View -->
+        <section id="view-dashboard" class="view-section active">
             <header class="flex justify-between items-center mb-8">
-                <h1 class="text-3xl font-bold text-gray-800">Pipeline de Demandas</h1>
-                <button class="bg-blue-600 text-white px-4 py-2 rounded shadow">+ Nova Demanda</button>
+                <h1 class="text-3xl font-bold text-gray-800">Visão Geral do Portfólio</h1>
+                <div class="flex gap-4">
+                    <button id="btn-new-project"
+                        class="bg-blue-600 text-white px-4 py-2 rounded shadow hover:bg-blue-700">+
+                        Novo
+                        Projeto</button>
+                </div>
             </header>
 
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <!-- Ideia -->
-                <div class="kanban-col">
-                    <h3 class="font-bold text-gray-600 mb-4 px-2 uppercase text-xs tracking-wider">Ideias</h3>
-                    <div id="col-ideia" class="space-y-2"></div>
+            <!-- Stats Grid -->
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+                <div class="bg-white p-6 rounded-xl shadow-sm">
+                    <h3 class="text-sm text-gray-500 mb-1">Total de Projetos</h3>
+                    <p class="text-2xl font-bold" id="kpi-total-projects">-</p>
                 </div>
-                <!-- Análise -->
-                <div class="kanban-col">
-                    <h3 class="font-bold text-yellow-600 mb-4 px-2 uppercase text-xs tracking-wider">Em Análise</h3>
-                    <div id="col-analise" class="space-y-2"></div>
+                <div class="bg-white p-6 rounded-xl shadow-sm">
+                    <h3 class="text-sm text-gray-500 mb-1">Em Risco</h3>
+                    <p class="text-2xl font-bold text-red-500" id="kpi-risk-projects">-</p>
                 </div>
-                <!-- Aprovado -->
-                <div class="kanban-col">
-                    <h3 class="font-bold text-green-600 mb-4 px-2 uppercase text-xs tracking-wider">Aprovado</h3>
-                    <div id="col-aprovado" class="space-y-2"></div>
+                <div class="bg-white p-6 rounded-xl shadow-sm">
+                    <h3 class="text-sm text-gray-500 mb-1">Concluídos (YTD)</h3>
+                    <p class="text-2xl font-bold text-green-500">8</p>
+                </div>
+                <div class="bg-white p-6 rounded-xl shadow-sm">
+                    <h3 class="text-sm text-gray-500 mb-1">Orçamento Executado</h3>
+                    <p class="text-2xl font-bold" id="kpi-budget">-</p>
                 </div>
             </div>
-        </section>
+
+            <!-- Charts Section -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div class="bg-white p-6 rounded-xl shadow-sm">
+                    <h3 class="font-bold mb-4">Investimento por Cliente</h3>
+                    <div id="chart-investment" class="h-64 bg-gray-50 flex items-center justify-center">Gráfico
+                        Carregando...</div>
+                </div>
+                <div class="bg-white p-6 rounded-xl shadow-sm">
+                    <h3 class="font-bold mb-4">Saúde dos Projetos</h3>
+                    <div id="chart-health" class="h-64 bg-gray-50 flex items-center justify-center">Gráfico
+                        Carregando...</div>
+                </div>
+                <!-- Status Reports -->
+                <div class="mt-8 bg-white p-6 rounded-xl shadow-sm">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="font-bold">Últimos Status Reports (Gerados Automaticamente)</h3>
+                        <button id="btn-gen-report"
+                            class="text-sm bg-gray-100 hover:bg-gray-200 px-3 py-1 rounded border">Simular Geração
+                            Manual</button>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-sm text-left">
+                            <thead class="text-gray-500 border-b">
+                                <tr>
+                                    <th class="py-2">Data</th>
+                                    <th class="py-2">Projeto</th>
+                                    <th class="py-2">Saúde</th>
+                                    <div class="flex gap-8">
+                                        <!-- Matrix -->
+                                        <div class="bg-white p-6 rounded-xl shadow-sm">
+                                            <h3 class="font-bold mb-4 text-center">Matriz Probabilidade x Impacto</h3>
+                                            <div class="relative">
+                                                <!-- Y Axis Label -->
+                                                <div
+                                                    class="absolute -left-8 top-1/2 -rotate-90 text-sm font-bold text-gray-500">
+                                                    Probabilidade
+                                                </div>
+                                                <!-- X Axis Label -->
+                                                <div
+                                                    class="absolute -bottom-8 left-1/2 -translate-x-1/2 text-sm font-bold text-gray-500">
+                                                    Impacto</div>
+
+                                                <div id="risk-matrix" class="risk-matrix border-2 border-slate-300">
+                                                    <!-- Matrix Cells generated by JS -->
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <!-- Risk List -->
+                                        <div class="flex-1 bg-white p-6 rounded-xl shadow-sm">
+                                            <div class="flex justify-between items-center mb-4">
+                                                <h3 class="font-bold">Riscos Críticos</h3>
+                                                <button class="text-sm text-blue-600 hover:underline">+ Novo
+                                                    Risco</button>
+                                            </div>
+                                            <div id="risk-list" class="space-y-2">
+                                                <!-- Risk Items -->
+                                                <p class="text-gray-500 text-sm">Nenhum risco crítico identificado.</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <!-- Pipeline View -->
+                                    <!-- Pipeline View -->
+                                    <section id="view-projects" class="view-section hidden">
+                                        <header class="flex justify-between items-center mb-8">
+                                            <h1 class="text-3xl font-bold text-gray-800">Pipeline de Demandas</h1>
+                                            <button class="bg-blue-600 text-white px-4 py-2 rounded shadow">+ Nova
+                                                Demanda</button>
+                                        </header>
+
+                                        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                            <!-- Ideia -->
+                                            <div class="kanban-col">
+                                                <h3
+                                                    class="font-bold text-gray-600 mb-4 px-2 uppercase text-xs tracking-wider">
+                                                    Ideias</h3>
+                                                <div id="col-ideia" class="space-y-2"></div>
+                                            </div>
+                                            <!-- Análise -->
+                                            <div class="kanban-col">
+                                                <h3
+                                                    class="font-bold text-yellow-600 mb-4 px-2 uppercase text-xs tracking-wider">
+                                                    Em Análise</h3>
+                                                <div id="col-analise" class="space-y-2"></div>
+                                            </div>
+                                            <!-- Aprovado -->
+                                            <div class="kanban-col">
+                                                <h3
+                                                    class="font-bold text-green-600 mb-4 px-2 uppercase text-xs tracking-wider">
+                                                    Aprovado</h3>
+                                                <div id="col-aprovado" class="space-y-2"></div>
+                                            </div>
+                                        </div>
+                                    </section>
     </main>
 
-    <!--Quick Actions FAB(Mobile Only)-- >
+    <!-- Quick Actions FAB (Mobile Only) -->
     <div class="fixed bottom-6 right-6 md:hidden z-40 group">
         <div class="absolute bottom-16 right-0 space-y-2 hidden group-hover:block transition-all duration-200">
             <button class="bg-blue-600 text-white p-3 rounded-full shadow-lg flex items-center gap-2 w-max ml-auto">
@@ -180,13 +222,16 @@
             </button>
         </div>
         <button class="bg-slate-800 text-white p-4 rounded-full shadow-xl hover:scale-110 transition-transform">
-            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/></svg>
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+            </svg>
         </button>
     </div>
 
-    <!--AI Analysis Modal-- >
+    <!-- AI Analysis Modal -->
     <div id="ai-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-50">
-        <div class="bg-white rounded-xl shadow-2xl w-full max-w-lg overflow-hidden transform transition-all scale-95 opacity-0" id="ai-modal-content">
+        <div class="bg-white rounded-xl shadow-2xl w-full max-w-lg overflow-hidden transform transition-all scale-95 opacity-0"
+            id="ai-modal-content">
             <div class="bg-gradient-to-r from-purple-600 to-indigo-600 p-6 text-white">
                 <h3 class="text-xl font-bold flex items-center gap-2">
                     ✨ PMO AI Assistant
@@ -199,19 +244,19 @@
                     <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mb-4"></div>
                     <p class="text-slate-500 animate-pulse">Consultando base de conhecimento...</p>
                 </div>
-                
+
                 <!-- Result State -->
                 <div id="ai-result" class="hidden">
                     <div class="mb-4">
                         <span class="text-xs font-bold text-slate-400 uppercase">Resumo Executivo</span>
                         <p id="ai-summary" class="text-slate-800 mt-1"></p>
                     </div>
-                    
+
                     <div class="mb-4">
                         <span class="text-xs font-bold text-slate-400 uppercase">Riscos Identificados</span>
                         <p id="ai-risks" class="text-slate-800 mt-1"></p>
                     </div>
-                    
+
                     <div class="bg-indigo-50 p-4 rounded-lg border border-indigo-100">
                         <span class="text-xs font-bold text-indigo-500 uppercase flex items-center gap-1">
                             💡 Recomendação
@@ -221,13 +266,11 @@
                 </div>
             </div>
             <div class="bg-slate-50 p-4 flex justify-end">
-                <button id="btn-close-ai" class="text-slate-500 hover:text-slate-800 font-medium text-sm">Fechar</button>
+                <button id="btn-close-ai"
+                    class="text-slate-500 hover:text-slate-800 font-medium text-sm">Fechar</button>
             </div>
         </div>
     </div>
+</body>
 
-    <!--App Logic-- >
-            <script type="module" src="js/app.js"></script>
-    </body>
-
-</html> >
+</html>

@@ -1,387 +1,499 @@
-// js/app.js
+import { Auth } from './auth.js';
+import { Metrics } from './metrics.js';
 
-// CONFIGURAÇÃO INICIAL E HELPERS
-const supabaseClient = window.supabaseClient || window.supabase.createClient(window.PMO_CONFIG.SUPABASE_URL, window.PMO_CONFIG.SUPABASE_KEY);
+console.log('PMO Hub v15.1 Loaded');
 
-const phases = {
-    's2d': ['Check-in Comercial', 'Repositório Criado', 'Riscos Iniciais'],
-    'init': ['Kick-off', 'Stakeholders Mapeados', 'TAP Assinado'],
-    'plan': ['Cronograma', 'WBS', 'Plano Financeiro'],
-    'exec': ['Desenvolvimento', 'Testes', 'Homologação'],
-    'mon': ['Status Report', 'Controle Horas', 'Change Log'],
-    'close': ['Aceite Final', 'Lições Aprendidas', 'Encerramento Admin']
+// --- Project Factory Pattern ---
+const ProjectFactory = {
+    createProject: (type, name, client, budget) => {
+        const baseProject = {
+            id: crypto.randomUUID(),
+            name,
+            client,
+            budget,
+            spent: 0,
+            startDate: new Date().toISOString().split('T')[0],
+            status: 'Em Planejamento',
+            risks: [],
+            team: [],
+            allocations: [] // Array of { resourceId, role, hours }
+        };
+
+        switch (type) {
+            case 'traditional':
+                return { ...baseProject, methodology: 'Waterfall', tools: ['Gantt', 'WBS', 'EVM'] };
+            case 'agile':
+                return { ...baseProject, methodology: 'Agile', tools: ['Kanban', 'Backlog', 'Burndown'] };
+            case 'quick':
+                return { ...baseProject, methodology: 'Quick Win', tools: ['Checklist', 'Kanban Lite'] };
+            default:
+                return baseProject;
+        }
+    }
 };
-const months = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
 
-// CORREÇÃO 1: FormatCurrency definido no topo
-const BRL = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
-window.formatCurrency = function(v) {
-    return BRL.format(v || 0);
-}
+// --- State Management ---
+const AppState = {
+    projects: [],
+    demands: [], // Pipeline Items
+    reports: [], // Status Reports
+    resources: [], // Team Members
 
-// ESTADO GLOBAL
-let projects = [];
-let currentProjId = null;
-let activeLogoFilter = 'all';
-let chartInstance = null;
-let adminChart1 = null;
-let adminChart2 = null;
-let timerInterval = null;
+    loadProjects: async () => {
+        // Mock Data
+        if (AppState.projects.length === 0) {
+            AppState.projects = [
+                ProjectFactory.createProject('traditional', 'Implantação ERP', 'Acme Corp', 500000),
+                ProjectFactory.createProject('agile', 'App Mobile V2', 'Tech Solutions', 150000),
+                ProjectFactory.createProject('quick', 'Campanha Marketing', 'Retail SA', 20000)
+            ];
 
-// FUNÇÃO DE INICIALIZAÇÃO
-window.init = async function() {
-    try {
-        const { data, error } = await supabaseClient.from('projects').select('*');
-        if(error) throw error;
-        projects = data && data.length > 0 ? data.map(row => row.content) : [];
-        
-        if (window.Auth && window.Auth.isAdmin()) {
-            const btnAdmin = document.getElementById('nav-admin');
-            if(btnAdmin) btnAdmin.classList.remove('hidden');
-            const profileSelector = document.getElementById('admin-profile-selector');
-            if(profileSelector) profileSelector.classList.remove('hidden');
+            // Mock Stats
+            AppState.projects[0].spent = 120000;
+            AppState.projects[0].status = 'Em Execução';
+            AppState.projects[0].risks = [
+                { title: 'Atraso Fornecedor', prob: 4, impact: 5 }, // Critical
+                { title: 'Mudança Escopo', prob: 3, impact: 3 }    // Med
+            ];
+            AppState.projects[0].allocations = [
+                { resourceId: 1, role: 'GP', hours: 40 },
+                { resourceId: 2, role: 'Dev', hours: 80 }
+            ];
+
+            AppState.projects[1].spent = 145000;
+            AppState.projects[1].status = 'Em Risco';
+            AppState.projects[1].risks = [
+                { title: 'Bug Crítico', prob: 5, impact: 5 } // Critical
+            ];
+            AppState.projects[1].allocations = [
+                { resourceId: 2, role: 'Dev', hours: 120 }, // Overload (80+120=200)
+                { resourceId: 3, role: 'QA', hours: 40 }
+            ];
+
+            // Mock Demands
+            AppState.demands = [
+                { id: 1, title: 'Upgrade Servidores', status: 'ideia', score: 8 },
+                { id: 2, title: 'Nova Intranet', status: 'analise', score: 5 },
+                { id: 3, title: 'Migração Cloud', status: 'aprovado', score: 9 }
+            ];
+
+            // Mock Reports
+            AppState.reports = [
+                { date: '2025-12-01', projectName: 'Implantação ERP', health: 'green', author: 'Ana Silva', link: '#' },
+                { date: '2025-12-01', projectName: 'App Mobile V2', health: 'yellow', author: 'Carlos Manager', link: '#' }
+            ];
+
+            // Mock Resources
+            AppState.resources = [
+                { id: 1, name: 'Ana Silva', role: 'Gerente de Projetos', capacity: 160, avatar: 'AS' },
+                { id: 2, name: 'Carlos Dev', role: 'Desenvolvedor Fullstack', capacity: 160, avatar: 'CD' },
+                { id: 3, name: 'Julia QA', role: 'Analista de Qualidade', capacity: 160, avatar: 'JQ' }
+            ];
         }
-    } catch (err) { 
-        console.error("Erro na inicialização:", err); 
+        AppState.renderDashboard();
+    },
+
+    addProject: (type, name, client, budget) => {
+        const newProject = ProjectFactory.createProject(type, name, client, budget);
+        AppState.projects.push(newProject);
+        AppState.renderDashboard();
+        return newProject;
+    },
+
+    renderDashboard: () => {
+        const totalProjects = AppState.projects.length;
+        const totalBudget = AppState.projects.reduce((sum, p) => sum + p.budget, 0);
+
+        // Update KPIs
+        const totalEl = document.getElementById('kpi-total-projects');
+        if (totalEl) totalEl.innerText = totalProjects;
+
+        const riskCount = AppState.projects.filter(p => Metrics.calculateWeightedHealth(p).status === 'Crítico').length;
+        const riskEl = document.getElementById('kpi-risk-projects');
+        if (riskEl) riskEl.innerText = riskCount;
+
+        const budgetEl = document.getElementById('kpi-budget');
+        if (budgetEl) budgetEl.innerText = `R$ ${(totalBudget / 1000).toFixed(1)}k`;
+
+        updateChartInvestment();
+        updateChartHealth();
     }
-    window.renderPortfolio();
-    window.renderFilters();
-}
+};
 
-// FUNÇÕES DE CRUD
-window.save = async function() {
-    try {
-        if (currentProjId) {
-            const p = projects.find(x => x.id === currentProjId);
-            await supabaseClient.from('projects').upsert({ id: p.id, content: p });
-        } else {
-            for(const p of projects) {
-                await supabaseClient.from('projects').upsert({ id: p.id, content: p });
-            }
-        }
-    } catch (err) {
-        console.error("Erro ao salvar:", err);
-        alert("Erro ao salvar dados. Verifique a conexão.");
-    }
-}
+// --- Chart Functions ---
+function updateChartInvestment() {
+    const clients = {};
+    AppState.projects.forEach(p => {
+        if (!clients[p.client]) clients[p.client] = 0;
+        clients[p.client] += p.budget;
+    });
 
-window.createProject = async function() {
-    const nameInput = document.getElementById('np-name');
-    const pmInput = document.getElementById('np-pm');
-    const clientInput = document.getElementById('np-client');
-
-    const name = nameInput.value;
-    if (!name) { alert("Por favor, digite o nome do projeto."); return; }
-
-    const btn = document.querySelector("button[onclick='window.createProject()']");
-    if(btn) { btn.innerText = "Salvando..."; btn.disabled = true; }
-
-    const model = document.getElementById('np-model').value;
-    const client = clientInput.value || 'Geral';
-    let icon = "fas fa-building"; 
-    if (client.toLowerCase().includes("banco")) icon = "fas fa-university";
-    
-    // CORREÇÃO 2: ID Numérico
-    const newId = Date.now(); 
-    
-    const newP = {
-        id: newId, name, pm: pmInput.value || 'Gerente', 
-        client, logo: icon, model: model, 
-        fin: { setup: 0, sustain: 0 }, 
-        info: { hours_plan: 0, hours_real: 0, costmode: 'CAPEX' }, 
-        sCurve: Array(12).fill(0).map((_, i) => ({ month: months[i], plan: 0, real: 0 })),
-        gantt: [], kanban: { todo: [], doing: [], done: [] }, 
-        risks: [], canvas: { pain: '', obj: '' }, stakeholders: [], raci: [], checks: {}
+    const options = {
+        series: [{ name: 'Investimento', data: Object.values(clients) }],
+        chart: { type: 'bar', height: 250, toolbar: { show: false } },
+        xaxis: { categories: Object.keys(clients) }
     };
 
-    try {
-        const { error } = await supabaseClient.from('projects').upsert({ id: newId, content: newP });
-        if (error) throw error;
-
-        projects.push(newP);
-        window.closeModal('modal-project');
-        window.goToPortfolio();
-        window.renderFilters();
-        
-        nameInput.value = "";
-        pmInput.value = "";
-        clientInput.value = "";
-
-    } catch (err) {
-        console.error("Erro ao salvar:", err);
-        alert("Erro ao criar projeto no banco: " + err.message);
-    } finally {
-        if(btn) { btn.innerText = "Criar"; btn.disabled = false; }
+    const chartEl = document.querySelector("#chart-investment");
+    if (chartEl) {
+        chartEl.innerHTML = "";
+        const chart = new ApexCharts(chartEl, options);
+        chart.render();
     }
 }
 
-window.deleteProject = async function(id) {
-    if(!confirm("Tem certeza que deseja excluir este projeto permanentemente?")) return;
-    try {
-        const { error } = await supabaseClient.from('projects').delete().eq('id', id);
-        if (error) throw error;
-        projects = projects.filter(p => p.id !== id);
-        window.renderPortfolio();
-        window.renderFilters();
-        if(currentProjId === id) window.goToPortfolio();
-    } catch (err) {
-        console.error("Erro ao excluir:", err);
-        alert("Erro ao excluir. Verifique sua conexão.");
-    }
-}
+function updateChartHealth() {
+    let healthCounts = { green: 0, yellow: 0, red: 0 };
+    AppState.projects.forEach(p => {
+        const health = Metrics.calculateHealth(p); // Legacy check for chart default
+        const wHealth = Metrics.calculateWeightedHealth(p);
 
-// UI HELPERS & NAVEGAÇÃO
-window.goToPortfolio = function() {
-    document.getElementById('view-portfolio').classList.remove('hidden');
-    document.getElementById('view-project-hub').classList.add('hidden');
-    const viewAdmin = document.getElementById('view-admin');
-    if(viewAdmin) viewAdmin.classList.add('hidden');
-    document.getElementById('project-nav').classList.add('hidden');
-    window.renderPortfolio();
-}
-
-window.openProject = function(id) {
-    currentProjId = id; const p = projects.find(x=>x.id===id);
-    document.getElementById('view-portfolio').classList.add('hidden');
-    const viewAdmin = document.getElementById('view-admin'); if(viewAdmin) viewAdmin.classList.add('hidden');
-    
-    document.getElementById('view-project-hub').classList.remove('hidden');
-    document.getElementById('project-nav').classList.remove('hidden');
-    document.getElementById('sb-proj-name').innerText = p.name;
-    
-    const model = p.model || 'tradicional';
-    const typeLabel = document.getElementById('sb-proj-type');
-    if(typeLabel) typeLabel.innerText = model.toUpperCase();
-    
-    const navGantt = document.getElementById('nav-gantt');
-    const navKanban = document.getElementById('nav-kanban');
-
-    if (model === 'agil') {
-        if(navGantt) navGantt.classList.add('hidden');
-        if(navKanban) navKanban.classList.remove('hidden');
-    } else {
-        if(navGantt) navGantt.classList.remove('hidden');
-        if(navKanban) navKanban.classList.add('hidden');
-    }
-
-    window.showTab('dashboard');
-}
-
-window.showTab = function(id) {
-    document.querySelectorAll('#view-project-hub > div').forEach(d => d.classList.add('hidden'));
-    const viewAdmin = document.getElementById('view-admin');
-    if(viewAdmin) viewAdmin.classList.add('hidden');
-    
-    document.querySelectorAll('#project-nav .nav-item').forEach(b => b.classList.remove('active'));
-    
-    if(id === 'admin') {
-        document.getElementById('view-portfolio').classList.add('hidden');
-        document.getElementById('view-project-hub').classList.add('hidden');
-        document.getElementById('view-admin').classList.remove('hidden');
-        window.renderAdminView();
-        return;
-    }
-
-    const tab = document.getElementById('tab-'+id);
-    if(tab) tab.classList.remove('hidden');
-    
-    const nav = document.getElementById('nav-'+id);
-    if(nav) nav.classList.add('active');
-    
-    if(id === 'dashboard') window.renderDashboard();
-    if(id === 'info') window.loadInfoForm();
-    if(id === 'financial') window.renderSCurveInput();
-    if(id === 'lifecycle') window.renderPhase('s2d');
-    if(id === 'gantt') window.renderGantt();
-    if(id === 'kanban') window.renderKanban();
-    if(id === 'governance') window.renderGov();
-    if(id === 'canvas') window.loadCanvas();
-    if(id === 'risks') window.renderRiskMatrix();
-}
-
-// RENDERING
-window.renderPortfolio = function() {
-    const tb = document.getElementById('portfolio-body'); tb.innerHTML = '';
-    if (projects.length === 0) {
-        tb.innerHTML = '<tr><td colspan="7" class="text-center py-8 text-slate-400">Nenhum projeto encontrado. Clique em "Novo Projeto" para começar.</td></tr>';
-        return;
-    }
-    const filtered = activeLogoFilter === 'all' ? projects : projects.filter(p => p.client === activeLogoFilter);
-    
-    filtered.forEach(p => {
-        const lastReal = p.sCurve?.[p.sCurve.length-1]?.real || 0;
-        const info = p.info || {};
-        tb.innerHTML += `<tr class="border-b hover:bg-slate-50"><td><div class="flex items-center gap-2"><i class="${p.logo}"></i> <span class="font-bold">${p.client}</span></div></td><td><div class="font-bold">${p.name}</div></td><td><span class="text-xs bg-slate-200 px-2 rounded">${p.model || 'Trad'}</span></td><td><span class="bg-blue-100 text-blue-700 px-2 font-bold text-xs">Ativo</span></td><td><div class="flex gap-1"><div class="traffic-light tl-${info.time||'verde'}"></div><div class="traffic-light tl-${info.cost||'verde'}"></div></div></td><td><div class="text-xs font-bold text-blue-600">${window.formatCurrency(lastReal)}</div></td><td class="text-right"><button onclick="window.openProject(${p.id})" class="text-xs border px-2 py-1 rounded hover:bg-slate-100 mr-2">Abrir</button><button onclick="window.deleteProject(${p.id})" class="text-red-500"><i class="fas fa-trash"></i></button></td></tr>`;
-    });
-    
-    document.getElementById('kpi-total').innerText = filtered.length;
-}
-
-window.renderDashboard = function() {
-    const p = projects.find(x=>x.id===currentProjId); const info = p.info || {};
-    document.getElementById('dash-name').innerText = p.name; document.getElementById('dash-pm').innerText = p.pm; document.getElementById('dash-client').innerText = p.client;
-    
-    const last = p.sCurve.filter(m => m.real > 0).pop() || { plan: 0, real: 0 };
-    const cfCusto = window.PMO_Metrics.calcularFarolCusto(last.plan, last.real);
-    const cfPrazo = window.PMO_Metrics.calcularFarolPrazo(p.gantt);
-    const cfHoras = window.PMO_Metrics.calcularFarolHoras(info.hours_plan, info.hours_real);
-
-    document.getElementById('light-time').className = `traffic-light tl-${cfPrazo} mt-1`;
-    document.getElementById('light-cost').className = `traffic-light tl-${cfCusto} mt-1`;
-    document.getElementById('light-hours').className = `traffic-light tl-${cfHoras} mt-1`;
-
-    if (chartInstance) chartInstance.destroy();
-    const ctx = document.getElementById('sCurveChart').getContext('2d');
-    chartInstance = new Chart(ctx, { type: 'line', data: { labels: p.sCurve.map(d=>d.month), datasets: [{ label: 'Realizado', data: p.sCurve.map(d=>d.real), borderColor: '#2563eb' }] }, options: { maintainAspectRatio: false } });
-}
-
-window.renderAdminView = function() {
-    const ctx1 = document.getElementById('adminChart1').getContext('2d');
-    const ctx2 = document.getElementById('adminChart2').getContext('2d');
-    
-    const clients = {};
-    const models = { 'tradicional': 0, 'agil': 0, 'quick': 0 };
-    
-    projects.forEach(p => {
-        const total = p.sCurve?.[p.sCurve.length-1]?.real || 0;
-        if(!clients[p.client]) clients[p.client] = 0;
-        clients[p.client] += total;
-        
-        const m = p.model || 'tradicional';
-        if(models[m] !== undefined) models[m]++;
-        else models['tradicional']++;
+        if (wHealth.status === 'Otimizado') healthCounts.green++;
+        else if (wHealth.status === 'Atenção') healthCounts.yellow++;
+        else healthCounts.red++;
     });
 
-    if(adminChart1) adminChart1.destroy();
-    if(adminChart2) adminChart2.destroy();
+    const options = {
+        series: [healthCounts.green, healthCounts.yellow, healthCounts.red],
+        labels: ['Otimizado', 'Atenção', 'Crítico'],
+        colors: ['#10B981', '#F59E0B', '#EF4444'],
+        chart: { type: 'donut', height: 250 },
+        legend: { position: 'bottom' }
+    };
 
-    adminChart1 = new Chart(ctx1, { type: 'bar', data: { labels: Object.keys(clients), datasets: [{ label: 'Investimento (R$)', data: Object.values(clients), backgroundColor: '#3b82f6' }] } });
-    adminChart2 = new Chart(ctx2, { type: 'doughnut', data: { labels: Object.keys(models), datasets: [{ data: Object.values(models), backgroundColor: ['#3b82f6', '#8b5cf6', '#10b981'] }] } });
+    const chartEl = document.querySelector("#chart-health");
+    if (chartEl) {
+        chartEl.innerHTML = "";
+        const chart = new ApexCharts(chartEl, options);
+        chart.render();
+    }
 }
 
-// CORREÇÃO 3: FUNÇÃO DE RISCOS ROBUSTA
-window.renderRiskMatrix = function() {
-    const p = projects.find(x => x.id === currentProjId);
-    const list = document.getElementById('risk-list');
-    list.innerHTML = '';
-    
-    document.querySelectorAll('.risk-cell').forEach(c => c.innerHTML = '');
+// --- View Logic ---
+function switchView(viewId) {
+    document.querySelectorAll('.view-section').forEach(el => el.classList.add('hidden'));
+    document.querySelectorAll('nav a').forEach(el => {
+        el.classList.remove('bg-slate-800', 'text-white');
+        el.classList.add('text-slate-300');
+    });
 
-    if(!p.risks) p.risks = [];
+    const activeSection = document.getElementById(`view-${viewId}`);
+    if (activeSection) activeSection.classList.remove('hidden');
 
-    p.risks.forEach((r, idx) => {
-        if(r.type === 'issue') return; 
+    const activeNav = document.getElementById(`nav-${viewId}`);
+    if (activeNav) {
+        activeNav.classList.add('bg-slate-800', 'text-white');
+        activeNav.classList.remove('text-slate-300');
+    }
 
-        const score = window.PMO_Metrics.calcularScoreRisco(r.prob, r.imp);
-        const color = score >= 6 ? 'text-red-600' : (score >= 3 ? 'text-amber-600' : 'text-green-600');
-        
-        list.innerHTML += `
-            <div class="flex justify-between items-center p-2 bg-slate-50 border rounded text-xs">
-                <div>
-                    <span class="font-bold ${color}">[${score}]</span> ${r.desc}
-                </div>
-                <button onclick="window.turnIssue(${idx})" class="text-[10px] bg-white border px-2 py-1 hover:bg-red-50 text-red-500">Virar Issue</button>
-            </div>`;
+    if (viewId === 'risks') renderRiskMatrix();
+    if (viewId === 'projects') renderPipeline();
+    if (viewId === 'financial') renderFinancial();
+    if (viewId === 'resources') renderResources();
+}
 
-        const cellId = `cell-${r.prob}-${r.imp}`;
-        const cell = document.getElementById(cellId);
-        if(cell) {
-            cell.innerHTML += `<div class="risk-dot" title="${r.desc}">${idx+1}</div>`;
+// --- Feature: Risk Matrix ---
+function renderRiskMatrix() {
+    const matrixEl = document.getElementById('risk-matrix');
+    const listEl = document.getElementById('risk-list');
+    if (!matrixEl) return;
+
+    matrixEl.innerHTML = '';
+    if (listEl) listEl.innerHTML = '';
+
+    // 5x5 Grid
+    for (let y = 5; y >= 1; y--) {
+        for (let x = 1; x <= 5; x++) {
+            const cell = document.createElement('div');
+            cell.className = 'risk-cell w-full h-full';
+
+            const score = x * y;
+            if (score >= 15) cell.classList.add('bg-risk-crit');
+            else if (score >= 10) cell.classList.add('bg-risk-high');
+            else if (score >= 5) cell.classList.add('bg-risk-med');
+            else cell.classList.add('bg-risk-low');
+
+            AppState.projects.forEach(p => {
+                if (p.risks) {
+                    p.risks.forEach(r => {
+                        if (r.prob === y && r.impact === x) {
+                            const dot = document.createElement('div');
+                            dot.className = 'risk-dot';
+                            dot.title = `${p.name}: ${r.title}`;
+                            cell.appendChild(dot);
+
+                            // Add to list if critical
+                            if (score >= 15 && listEl) {
+                                const item = document.createElement('div');
+                                item.className = 'p-2 border-l-4 border-red-800 bg-red-50 text-sm';
+                                item.innerHTML = `<strong>${p.name}</strong>: ${r.title}`;
+                                listEl.appendChild(item);
+                            }
+                        }
+                    });
+                }
+            });
+            matrixEl.appendChild(cell);
         }
+    }
+}
+
+// --- Feature: Pipeline (Simple Kanban) ---
+function renderPipeline() {
+    const cols = {
+        'ideia': document.getElementById('col-ideia'),
+        'analise': document.getElementById('col-analise'),
+        'aprovado': document.getElementById('col-aprovado')
+    };
+
+    Object.values(cols).forEach(col => { if (col) col.innerHTML = ''; });
+
+    AppState.demands.forEach(d => {
+        const card = document.createElement('div');
+        card.className = 'kanban-card';
+        card.innerHTML = `
+            <div class="font-bold text-gray-800">${d.title}</div>
+            <div class="text-xs text-gray-400 mt-1">Score: ${d.score}</div>
+        `;
+
+        if (cols[d.status]) cols[d.status].appendChild(card);
     });
 }
 
-window.addRiskMatrix = function() {
-    const descInput = document.getElementById('risk-desc');
-    const desc = descInput.value;
-    const prob = parseInt(document.getElementById('risk-prob').value);
-    const imp = parseInt(document.getElementById('risk-imp').value);
-    
-    if (!desc) {
-        alert("Por favor, digite a descrição do risco.");
-        return;
-    }
+// --- Feature: Financial Module (Phase 2 + AI) ---
+function renderFinancial() {
+    const listEl = document.getElementById('financial-list');
+    if (!listEl) return;
+    listEl.innerHTML = '';
 
-    const p = projects.find(x => x.id === currentProjId);
-    if (!p) { alert("Erro: Projeto não encontrado."); return; }
-    if (!p.risks) p.risks = [];
+    AppState.projects.forEach(p => {
+        const forecast = Metrics.calculateForecast(p);
+        const tr = document.createElement('tr');
+        tr.className = 'border-b';
 
-    p.risks.push({ desc, prob, imp, type: 'risk' }); 
-    window.save();
-    window.renderRiskMatrix();
-    descInput.value = '';
-}
+        const statusColor = forecast.variance >= 0 ? 'text-green-600' : 'text-red-600';
 
-window.turnIssue = function(idx) {
-    if(!confirm("Transformar este Risco em Issue (Problema Real)?")) return;
-    const p = projects.find(x => x.id === currentProjId);
-    p.risks[idx].type = 'issue';
-    p.risks[idx].desc = "[ISSUE] " + p.risks[idx].desc;
-    window.save(); 
-    window.renderRiskMatrix();
-}
+        tr.innerHTML = `
+            <td class="py-3 font-medium">${p.name}</td>
+            <td class="py-3">R$ ${p.budget.toLocaleString()}</td>
+            <td class="py-3">R$ ${p.spent.toLocaleString()}</td>
+            <td class="py-3 font-bold">R$ ${Math.round(forecast.eac).toLocaleString()}</td>
+            <td class="py-3 ${statusColor}">${forecast.status} (CPI: ${forecast.cpi})</td>
+            <td class="py-3">
+                <button class="bg-purple-100 hover:bg-purple-200 text-purple-700 px-3 py-1 rounded text-xs font-bold flex items-center gap-1 btn-ai-analyze" data-id="${p.id}">
+                    ✨ AI
+                </button>
+            </td>
+        `;
+        listEl.appendChild(tr);
+    });
 
-// KANBAN
-window.renderKanban = function() {
-    const p = projects.find(x => x.id === currentProjId);
-    if(!p.kanban) p.kanban = { todo: [], doing: [], done: [] };
-    
-    ['todo', 'doing', 'done'].forEach(col => {
-        const div = document.getElementById('kb-'+col);
-        div.innerHTML = '';
-        p.kanban[col].forEach((item, idx) => {
-            div.innerHTML += `
-                <div class="kanban-card" draggable="true" ondragstart="window.drag(event, '${col}', ${idx})">
-                    ${item}
-                    <button onclick="window.delKanban('${col}', ${idx})" class="float-right text-red-300 hover:text-red-500">×</button>
-                </div>`;
+    // Bind AI Buttons
+    document.querySelectorAll('.btn-ai-analyze').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const pid = e.currentTarget.dataset.id;
+            const project = AppState.projects.find(p => p.id == pid || p.id === pid);
+            if (project) openAIModal(project);
         });
     });
 }
-window.drag = function(ev, col, idx) { ev.dataTransfer.setData("text", JSON.stringify({col, idx})); }
-window.addKanban = function(col) { const t = prompt("Nova Tarefa:"); if(t) { projects.find(x => x.id === currentProjId).kanban[col].push(t); window.save(); window.renderKanban(); }}
-window.delKanban = function(col, idx) { projects.find(x => x.id === currentProjId).kanban[col].splice(idx, 1); window.save(); window.renderKanban(); }
 
-// DEMAIS FUNÇÕES DO PROJETO
-window.loadInfoForm = function() { const p = projects.find(x=>x.id===currentProjId); if(!p.info) p.info = {}; ['client','product','pep','assignee','reporter','costmode'].forEach(f => { document.getElementById('info-'+f).value = p.info[f] || ''; }); document.getElementById('info-hours-plan').value = p.info.hours_plan || 0; document.getElementById('info-hours-real').value = p.info.hours_real || 0; }
-window.saveProjectInfo = function() { const p = projects.find(x=>x.id===currentProjId); if(!p.info) p.info = {}; ['client','product','pep','assignee','reporter','costmode'].forEach(f => { p.info[f] = document.getElementById('info-'+f).value; }); p.info.hours_plan = parseFloat(document.getElementById('info-hours-plan').value) || 0; p.info.hours_real = parseFloat(document.getElementById('info-hours-real').value) || 0; p.client = document.getElementById('info-client').value; window.save(); alert('Dados Salvos!'); window.renderDashboard(); }
-window.renderGantt = function() { const p = projects.find(x=>x.id===currentProjId); const container = document.getElementById('gantt-rows'); container.innerHTML = ''; container.innerHTML = `<div class="absolute inset-0 grid grid-cols-12 pointer-events-none h-full"><div class="border-r border-slate-100 h-full"></div><div class="border-r border-slate-100 h-full"></div><div class="border-r border-slate-100 h-full"></div><div class="border-r border-slate-100 h-full"></div><div class="border-r border-slate-100 h-full"></div><div class="border-r border-slate-100 h-full"></div><div class="border-r border-slate-100 h-full"></div><div class="border-r border-slate-100 h-full"></div><div class="border-r border-slate-100 h-full"></div><div class="border-r border-slate-100 h-full"></div><div class="border-r border-slate-100 h-full"></div></div>`; p.gantt.forEach(task => { const width = (task.end - task.start) * (100/12); const left = task.start * (100/12); container.innerHTML += `<div class="relative h-10 flex items-center z-10 mb-2 group"><div class="gantt-bar bg-amber-500 hover:bg-amber-600 text-white shadow-md text-xs font-bold pl-2" style="left: ${left}%; width: ${width}%">${task.name}</div></div>`; }); }
-window.addTaskGantt = function() { const name = prompt("Nome da Tarefa:"); const start = parseInt(prompt("Mês Início (0-11):")); const end = parseInt(prompt("Mês Fim (0-11):")); if(name) { projects.find(x=>x.id===currentProjId).gantt.push({name, start, end}); window.save(); window.renderGantt(); } }
-window.renderPhase = function(ph) { const p = projects.find(x=>x.id===currentProjId); const checklist = phases[ph]; const titleMap = {'s2d':'S2D', 'init':'Iniciação', 'plan':'Planejamento', 'exec':'Execução', 'mon':'Monitoramento', 'close':'Encerramento'}; document.getElementById('ph-title').innerText = titleMap[ph]; document.querySelectorAll('#tab-lifecycle button').forEach(b => b.classList.remove('bg-indigo-600', 'text-white')); document.getElementById('ph-'+ph).classList.add('bg-indigo-600', 'text-white'); const div = document.getElementById('ph-checklist'); div.innerHTML = ''; checklist.forEach((item, i) => { const key = ph + '_' + i; const checked = p.checks && p.checks[key] ? 'checked' : ''; div.innerHTML += `<label class="flex items-center p-3 border rounded bg-white hover:bg-slate-50 cursor-pointer"><input type="checkbox" onchange="window.toggleCheck('${key}', '${ph}')" ${checked} class="mr-3"> <span class="${checked?'line-through text-slate-400':''}">${item}</span></label>`; }); }
-window.toggleCheck = function(key, ph) { const p = projects.find(x=>x.id===currentProjId); if(!p.checks) p.checks = {}; p.checks[key] = !p.checks[key]; window.save(); window.renderPhase(ph); }
-window.renderSCurveInput = function() { const p = projects.find(x=>x.id===currentProjId); const tbody = document.getElementById('scurve-input-body'); tbody.innerHTML = ''; p.sCurve.forEach((row, i) => { tbody.innerHTML += `<tr class="border-b"><td class="py-2 px-4">${row.month}</td><td class="py-2 px-4"><input type="number" onchange="window.updateSCurve(${i}, 'plan', this.value)" value="${row.plan}" class="form-input w-32 py-1"></td><td class="py-2 px-4"><input type="number" onchange="window.updateSCurve(${i}, 'real', this.value)" value="${row.real}" class="form-input w-32 py-1"></td></tr>`; }); document.getElementById('fin-setup').value = p.fin.setup; document.getElementById('fin-sustain').value = p.fin.sustain; }
-window.updateSCurve = function(idx, field, val) { projects.find(x=>x.id===currentProjId).sCurve[idx][field] = parseFloat(val); window.save(); }
-window.saveSCurveData = function() { window.save(); alert('Gráfico Atualizado!'); }
-window.saveMacroFin = function() { const p = projects.find(x=>x.id===currentProjId); p.fin.setup = parseFloat(document.getElementById('fin-setup').value); p.fin.sustain = parseFloat(document.getElementById('fin-sustain').value); window.save(); alert('Salvo!'); }
-window.renderGov = function() { const p = projects.find(x=>x.id===currentProjId); document.getElementById('stake-body').innerHTML = p.stakeholders.map((s,i)=>`<tr><td>${s.n}</td><td>${s.r}</td><td><button onclick="window.delStake(${i})" class="text-red-500"><i class="fas fa-trash"></i></button></td></tr>`).join(''); document.getElementById('raci-body').innerHTML = p.raci.map((r,i)=>`<tr><td>${r.a}</td><td>${r.r}</td><td>${r.ac}</td><td>${r.c}</td><td>${r.i}</td><td><button onclick="window.delRaci(${i})" class="text-red-500"><i class="fas fa-trash"></i></button></td></tr>`).join(''); }
-window.addStake = function() { const n=prompt("Nome:"); if(n) { projects.find(x=>x.id===currentProjId).stakeholders.push({n, r:'-'}); window.save(); window.renderGov(); }}
-window.delStake = function(i) { projects.find(x=>x.id===currentProjId).stakeholders.splice(i,1); window.save(); window.renderGov(); }
-window.addRaci = function() { const a=prompt("Atividade:"); if(a) { projects.find(x=>x.id===currentProjId).raci.push({a,r:'X',ac:'',c:'',i:''}); window.save(); window.renderGov(); }}
-window.delRaci = function(i) { projects.find(x=>x.id===currentProjId).raci.splice(i,1); window.save(); window.renderGov(); }
-window.loadCanvas = function() { const p = projects.find(x=>x.id===currentProjId); document.getElementById('cv-pain').value = p.canvas.pain; document.getElementById('cv-obj').value = p.canvas.obj; document.getElementById('cv-out-name').innerText = p.name; document.getElementById('cv-out-pain').innerText = p.canvas.pain; document.getElementById('cv-out-obj').innerText = p.canvas.obj; const last = p.sCurve[p.sCurve.length-1]; document.getElementById('cv-out-fin').innerText = window.formatCurrency(last.plan); document.getElementById('cv-out-dev').innerText = window.formatCurrency(last.plan - last.real); }
-window.saveCanvas = function() { const p = projects.find(x=>x.id===currentProjId); p.canvas.pain = document.getElementById('cv-pain').value; p.canvas.obj = document.getElementById('cv-obj').value; window.save(); window.loadCanvas(); }
-window.openProjectModal = function() { document.getElementById('modal-project').classList.remove('hidden'); }
-window.openDailyModal = function() { document.getElementById('modal-daily').classList.remove('hidden'); }
-window.closeModal = function(id) { document.getElementById(id).classList.add('hidden'); }
-window.startTimer = function() { let sec = 900; if(timerInterval) clearInterval(timerInterval); timerInterval = setInterval(() => { sec--; document.getElementById('timer').innerText = `${Math.floor(sec/60).toString().padStart(2,'0')}:${(sec%60).toString().padStart(2,'0')}`; if(sec<=0) clearInterval(timerInterval); }, 1000); }
-window.filterLogo = function(c) { activeLogoFilter = c; window.renderPortfolio(); }
-window.filterByName = function() { const val = document.getElementById('text-filter').value; window.filterLogo(val); }
+// --- Feature: Resource Management (Phase 2) ---
+function renderResources() {
+    const gridEl = document.getElementById('resource-grid');
+    if (!gridEl) return;
+    gridEl.innerHTML = '';
 
-window.renderFilters = function() {
-    const cont = document.getElementById('logo-filters');
-    const clients = [...new Set(projects.map(p=>p.client))];
-    let html = `<button onclick="window.filterLogo('all')" class="logo-filter-btn active bg-white p-2 rounded shadow-sm w-20 text-center mr-2"><i class="fas fa-globe text-xl text-slate-400"></i><div class="text-[10px] mt-1 font-bold">Todos</div></button>`;
-    clients.forEach(c => {
-        const p = projects.find(x=>x.client===c);
-        html += `<button onclick="window.filterLogo('${c}')" class="logo-filter-btn bg-white p-2 rounded shadow-sm w-20 text-center mr-2"><i class="${p.logo} text-xl text-slate-600"></i><div class="text-[10px] mt-1 font-bold truncate">${c}</div></button>`;
-    });
-    cont.innerHTML = html;
+    AppState.resources.forEach(res => {
+        let totalHours = 0;
+        let projects = [];
 
-    const sel = document.getElementById('text-filter');
-    sel.innerHTML = '<option value="all">Todos os Clientes</option>';
-    clients.forEach(c => {
-        const opt = document.createElement('option');
-        opt.value = c; opt.innerText = c;
-        sel.appendChild(opt);
+        AppState.projects.forEach(p => {
+            const alloc = p.allocations?.find(a => a.resourceId === res.id);
+            if (alloc) {
+                totalHours += alloc.hours;
+                projects.push(`${p.name} (${alloc.hours}h)`);
+            }
+        });
+
+        const loadPct = Math.round((totalHours / res.capacity) * 100);
+        let barColor = 'bg-green-500';
+        if (loadPct > 100) barColor = 'bg-red-500';
+        else if (loadPct > 80) barColor = 'bg-yellow-500';
+
+        const card = document.createElement('div');
+        card.className = 'bg-white p-4 rounded-lg shadow border border-slate-200';
+        card.innerHTML = `
+            <div class="flex items-center gap-4 mb-4">
+                <div class="w-10 h-10 rounded-full bg-slate-200 flex items-center justify-center font-bold text-slate-600">
+                    ${res.avatar}
+                </div>
+                <div>
+                    <h4 class="font-bold text-lg">${res.name}</h4>
+                    <p class="text-xs text-slate-500">${res.role}</p>
+                </div>
+            </div>
+            
+            <div class="mb-2 flex justify-between text-sm">
+                <span>Carga: ${loadPct}%</span>
+                <span class="text-slate-500">${totalHours}/${res.capacity}h</span>
+            </div>
+            <div class="w-full bg-slate-100 rounded-full h-2.5 mb-4">
+                <div class="${barColor} h-2.5 rounded-full" style="width: ${Math.min(loadPct, 100)}%"></div>
+            </div>
+
+            <h5 class="text-xs font-bold text-slate-400 uppercase mb-2">Alocações</h5>
+            <div class="space-y-1 text-sm text-slate-600">
+                ${projects.map(p => `<div>• ${p}</div>`).join('') || '<div class="italic">Disponível</div>'}
+            </div>
+        `;
+        gridEl.appendChild(card);
     });
 }
+
+// --- Feature: Status Reports (Updated with Weighted Health) ---
+function generateStatusReport() {
+    const today = new Date().toISOString().split('T')[0];
+    const newReports = AppState.projects.map(p => {
+        const h = Metrics.calculateWeightedHealth(p);
+        return {
+            date: today,
+            projectName: p.name,
+            health: h.status,
+            color: h.color,
+            author: 'System (Auto)',
+            link: '#'
+        };
+    });
+
+    if (!AppState.reports) AppState.reports = [];
+    AppState.reports.unshift(...newReports);
+
+    renderReports();
+    alert(`Gerados ${newReports.length} reports com sucesso!`);
+}
+
+function renderReports() {
+    const listEl = document.getElementById('report-list');
+    if (!listEl) return;
+
+    listEl.innerHTML = '';
+    AppState.reports.forEach(r => {
+        const healthClass = r.color || (r.health === 'Crítico' ? 'text-red-600' : (r.health === 'Atenção' ? 'text-yellow-600' : 'text-green-600'));
+
+        const tr = document.createElement('tr');
+        tr.className = 'border-b hover:bg-gray-50';
+        tr.innerHTML = `
+            <td class="py-3">${r.date}</td>
+            <td class="py-3 font-medium">${r.projectName}</td>
+            <td class="py-3 ${healthClass} font-bold uppercase text-xs">${r.health}</td>
+            <td class="py-3">${r.author}</td>
+            <td class="py-3"><a href="#" class="text-blue-600 hover:underline">Download PDF</a></td>
+        `;
+        listEl.appendChild(tr);
+    });
+}
+
+// --- AI Service Mock (Phase 3) ---
+const AIService = {
+    analyze: async (project) => {
+        return new Promise(resolve => {
+            setTimeout(() => {
+                const health = Metrics.calculateWeightedHealth(project);
+                resolve({
+                    summary: `O projeto **${project.name}** possui um Health Score de **${health.score}/100** (${health.status}).`,
+                    risks: project.risks.length > 0 ? `Identificados ${project.risks.length} risco(s) monitorado(s). Impacto da qualidade de dados é ${health.details.length > 0 ? 'alto' : 'baixo'}.` : "Nenhum risco crítico mapeado.",
+                    recommendation: health.score < 60 ? "🚨 Ação Imediata: Revisar baseline de custos e mitigar riscos críticos." :
+                        (health.score < 80 ? "⚠️ Atenção: Monitorar tendência de CPI semanalmente." : "✅ Manter ritmo atual e validar entregas com stakeholders.")
+                });
+            }, 1000); // Simulate Latency
+        });
+    }
+};
+
+// --- AI UI Logic ---
+function openAIModal(project) {
+    const modal = document.getElementById('ai-modal');
+    const content = document.getElementById('ai-modal-content');
+    const loading = document.getElementById('ai-loading');
+    const result = document.getElementById('ai-result');
+
+    if (!modal || !content) return;
+
+    // Reset State
+    modal.classList.remove('hidden');
+    // Force reflow for transition
+    void modal.offsetWidth;
+    content.classList.remove('scale-95', 'opacity-0');
+
+    loading.classList.remove('hidden');
+    result.classList.add('hidden');
+
+    // Call Mock AI
+    AIService.analyze(project).then(analysis => {
+        loading.classList.add('hidden');
+        result.classList.remove('hidden');
+
+        document.getElementById('ai-summary').innerHTML = analysis.summary.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+        document.getElementById('ai-risks').innerText = analysis.risks;
+        document.getElementById('ai-recommendation').innerText = analysis.recommendation;
+    });
+
+    // Close Handler
+    const btnClose = document.getElementById('btn-close-ai');
+    btnClose.onclick = () => {
+        content.classList.add('scale-95', 'opacity-0');
+        setTimeout(() => {
+            modal.classList.add('hidden');
+        }, 200);
+    };
+}
+
+// --- Initialization ---
+document.addEventListener('DOMContentLoaded', () => {
+    // Navigation
+    ['dashboard', 'risks', 'projects', 'admin', 'financial', 'resources'].forEach(view => {
+        const link = document.getElementById(`nav-${view}`);
+        if (link) {
+            link.addEventListener('click', (e) => {
+                e.preventDefault();
+                switchView(view);
+            });
+        }
+    });
+
+    // Initial Load
+    if (window.location.pathname.includes('index.html')) {
+        AppState.loadProjects().then(() => {
+            renderReports();
+        });
+    }
+
+    // Bindings
+    const btnNew = document.getElementById('btn-new-project');
+    if (btnNew) {
+        btnNew.addEventListener('click', () => {
+            const name = prompt("Nome do Projeto:");
+            if (name) AppState.addProject('traditional', name, 'Demo', 10000);
+        });
+    }
+
+    const btnRep = document.getElementById('btn-gen-report');
+    if (btnRep) {
+        btnRep.addEventListener('click', () => {
+            generateStatusReport();
+        });
+    }
+
+    // Check for user session
+    Auth.requireAuth();
+
+    // Logout
+    const logoutBtn = document.getElementById('logoutBtn');
+    if (logoutBtn) {
+        logoutBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            Auth.logout();
+        });
+    }
+});

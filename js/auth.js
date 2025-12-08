@@ -1,74 +1,63 @@
-// js/auth.js
+import { CONFIG } from './config.js';
 
-if (!window.supabaseClient) {
-    window.supabaseClient = window.supabase.createClient(window.PMO_CONFIG.SUPABASE_URL, window.PMO_CONFIG.SUPABASE_KEY);
-}
+// Initialize Supabase Client
+// We use window.supabase because it's loaded via CDN
+const supabaseUrl = CONFIG.SUPABASE_URL;
+const supabaseKey = CONFIG.SUPABASE_ANON_KEY;
+const _supabase = window.supabase ? window.supabase.createClient(supabaseUrl, supabaseKey) : null;
 
-window.Auth = {
-    userProfile: null,
-    originalRole: null,
+export const Auth = {
+    client: _supabase,
 
-    signIn: async (email, password) => {
-        const { data, error } = await window.supabaseClient.auth.signInWithPassword({ email, password });
-        if (error) throw error;
-        return data;
-    },
-
-    signUp: async (email, password) => {
-        const { data, error } = await window.supabaseClient.auth.signUp({ email, password });
-        if (error) throw error;
-        return data;
-    },
-
-    resetPassword: async (email) => {
-        const { data, error } = await window.supabaseClient.auth.resetPasswordForEmail(email, { 
-            redirectTo: window.location.href.replace('login.html', 'index.html') 
+    login: async (email, password) => {
+        if (!_supabase) {
+            alert("Erro: Supabase não inicializado. Verifique as chaves em config.js");
+            return;
+        }
+        const { data, error } = await _supabase.auth.signInWithPassword({
+            email: email,
+            password: password
         });
-        if (error) throw error;
-        return data;
+
+        if (error) {
+            alert('Erro ao entrar: ' + error.message);
+            console.error(error);
+        } else {
+            console.log('Login efetuado:', data);
+            window.location.href = 'index.html';
+        }
     },
 
-    signOut: async () => {
-        await window.supabaseClient.auth.signOut();
-        window.location.href = 'login.html';
+    logout: async () => {
+        if (!_supabase) return;
+        const { error } = await _supabase.auth.signOut();
+        if (!error) {
+            window.location.href = 'login.html';
+        } else {
+            console.error('Logout error:', error);
+        }
     },
 
     checkSession: async () => {
-        const { data: { session } } = await window.supabaseClient.auth.getSession();
-        
-        if (!session && !window.location.href.includes('login.html')) {
-            window.location.href = 'login.html';
-            return null;
-        }
-
-        if (session) {
-            try {
-                const { data: profile } = await window.supabaseClient.from('profiles').select('*').eq('id', session.user.id).single();
-                window.Auth.userProfile = profile || { role: 'gestor' };
-                window.Auth.originalRole = window.Auth.userProfile.role;
-            } catch (err) {
-                console.warn("Perfil não encontrado, usando padrão gestor.");
-                window.Auth.userProfile = { role: 'gestor' };
-            }
-            
-            if(window.location.href.includes('login.html')) {
-                window.location.href = 'index.html';
-            }
-        }
+        if (!_supabase) return null;
+        const { data: { session } } = await _supabase.auth.getSession();
         return session;
     },
-    
-    isAdmin: () => {
-        return window.Auth.userProfile && window.Auth.userProfile.role === 'admin';
-    },
 
-    switchProfileView: (newRole) => {
-        if (window.Auth.originalRole !== 'admin') {
-            alert("Apenas administradores podem trocar de visão.");
-            return;
+    // Auth Guard: Call this on protected pages
+    requireAuth: async () => {
+        if (!_supabase) return; // Allow dev if no supabase? Or block? Block for security simulation.
+        const { data: { session } } = await _supabase.auth.getSession();
+        if (!session) {
+            window.location.href = 'login.html';
         }
-        window.Auth.userProfile.role = newRole;
-        alert(`Visão alterada para: ${newRole.toUpperCase()}`);
-        location.reload(); 
     }
 };
+
+// Auto-check session on load if we are not in login page
+// (Simple check based on pathname)
+if (!window.location.pathname.includes('login.html')) {
+    // We defer this call slightly to let things load or call it explicitly in app.js
+    // Auth.requireAuth(); 
+}
+

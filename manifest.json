@@ -1,0 +1,20 @@
+{
+    "name": "PMO Hub v15.1 Enterprise",
+    "short_name": "PMO Hub",
+    "start_url": "./index.html",
+    "display": "standalone",
+    "background_color": "#ffffff",
+    "theme_color": "#1e293b",
+    "icons": [
+        {
+            "src": "https://via.placeholder.com/192x192.png?text=PMO",
+            "sizes": "192x192",
+            "type": "image/png"
+        },
+        {
+            "src": "https://via.placeholder.com/512x512.png?text=PMO",
+            "sizes": "512x512",
+            "type": "image/png"
+        }
+    ]
+}

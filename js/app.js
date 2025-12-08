@@ -21,11 +21,11 @@ const ProjectFactory = {
 
         switch (type) {
             case 'traditional':
-                return { ...baseProject, methodology: 'Waterfall', tools: ['Gantt', 'WBS', 'EVM'] };
+                return { ...baseProject, methodology: 'Cascata', tools: ['Gantt', 'EAP', 'EVM'] };
             case 'agile':
                 return { ...baseProject, methodology: 'Agile', tools: ['Kanban', 'Backlog', 'Burndown'] };
             case 'quick':
-                return { ...baseProject, methodology: 'Quick Win', tools: ['Checklist', 'Kanban Lite'] };
+                return { ...baseProject, methodology: 'Ganho Rápido', tools: ['Checklist', 'Kanban Lite'] };
             default:
                 return baseProject;
         }
@@ -361,7 +361,7 @@ function generateStatusReport() {
             projectName: p.name,
             health: h.status,
             color: h.color,
-            author: 'System (Auto)',
+            author: 'Sistema (Auto)',
             link: '#'
         };
     });
@@ -388,7 +388,7 @@ function renderReports() {
             <td class="py-3 font-medium">${r.projectName}</td>
             <td class="py-3 ${healthClass} font-bold uppercase text-xs">${r.health}</td>
             <td class="py-3">${r.author}</td>
-            <td class="py-3"><a href="#" class="text-blue-600 hover:underline">Download PDF</a></td>
+            <td class="py-3"><a href="#" class="text-blue-600 hover:underline">Baixar PDF</a></td>
         `;
         listEl.appendChild(tr);
     });

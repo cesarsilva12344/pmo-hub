@@ -35,6 +35,7 @@
             });
         }
     </script>
+    <script src="js/secrets.js"></script>
     <script type="module" src="js/app.js"></script>
 </head>
 
@@ -49,6 +50,10 @@
         </div>
 
         <nav class="flex-1 px-4 space-y-2">
+            <a href="#" id="nav-inbox"
+                class="flex items-center gap-3 px-4 py-3 rounded-lg text-slate-300 hover:bg-slate-800 hover:text-white transition-all">
+                <span>📥</span> Inbox (GTD)
+            </a>
             <a href="#" id="nav-dashboard"
                 class="flex items-center gap-3 px-4 py-3 rounded-lg bg-slate-800 text-white shadow-sm transition-all">
                 <span>📊</span> Visão Geral
@@ -91,6 +96,49 @@
 
     <!-- Main Content -->
     <main class="flex-1 overflow-auto p-8 relative">
+        <!-- Inbox View (GTD) -->
+        <section id="view-inbox" class="view-section hidden">
+            <header class="flex justify-between items-center mb-8">
+                <h1 class="text-3xl font-bold text-gray-800">Caixa de Entrada (GTD)</h1>
+                <button id="btn-inbox-process"
+                    class="bg-green-600 text-white px-4 py-2 rounded shadow hover:bg-green-700">Processar Items</button>
+            </header>
+
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                <!-- Capture Area -->
+                <div class="lg:col-span-1 space-y-6">
+                    <div class="bg-white p-6 rounded-xl shadow-sm border-t-4 border-blue-500">
+                        <h3 class="font-bold text-lg mb-4 text-slate-700">Captura Rápida</h3>
+                        <p class="text-sm text-slate-500 mb-4">Esvazie sua mente. O que precisa ser feito?</p>
+                        <form id="form-inbox-capture">
+                            <textarea id="inbox-input" rows="4"
+                                class="w-full border rounded-lg p-3 focus:ring-2 focus:ring-blue-500 outline-none mb-3"
+                                placeholder="Ex: Comprar licença do software..."></textarea>
+                            <button type="submit"
+                                class="w-full bg-blue-600 text-white py-2 rounded font-bold hover:bg-blue-700">Capturar
+                                ↵</button>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Inbox List -->
+                <div class="lg:col-span-2">
+                    <div class="bg-white rounded-xl shadow-sm overflow-hidden">
+                        <div class="p-4 border-b border-gray-100 flex justify-between items-center bg-gray-50">
+                            <h3 class="font-bold text-slate-700">Itens Não Processados</h3>
+                            <span id="inbox-count"
+                                class="bg-red-100 text-red-600 text-xs font-bold px-2 py-1 rounded-full">0</span>
+                        </div>
+                        <ul id="inbox-list" class="divide-y divide-gray-100">
+                            <!-- JS Generated Items -->
+                            <li class="p-8 text-center text-slate-400 italic">Sua caixa de entrada está vazia. Parabéns!
+                                🎉</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </section>
+
         <!-- Dashboard View -->
         <section id="view-dashboard" class="view-section active">
             <header class="flex justify-between items-center mb-8">
@@ -144,6 +192,310 @@
                             class="w-full bg-blue-600 text-white py-2 rounded font-bold hover:bg-blue-700 mt-2">
                             Processar Importação
                         </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- NEW PROJECT MODAL -->
+            <div id="new-project-modal"
+                class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-50 overflow-y-auto pt-10 pb-10">
+                <div class="bg-white rounded-xl shadow-2xl w-full max-w-4xl flex flex-col max-h-full">
+                    <!-- Header -->
+                    <div class="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50 rounded-t-xl">
+                        <div>
+                            <h3 class="text-xl font-bold text-slate-800">Novo Projeto</h3>
+                            <p class="text-sm text-slate-500">Preencha os dados completos para iniciar o planejamento.
+                            </p>
+                        </div>
+                        <button id="btn-close-new-project"
+                            class="text-slate-400 hover:text-slate-600 transition-colors">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                        </button>
+                    </div>
+
+                    <!-- WIZARD STEP 1: GOVERNANCE TRACK -->
+                    <div id="np-step-1" class="p-8 flex-1 overflow-y-auto">
+                        <h4 class="text-center text-lg font-bold text-slate-700 mb-8">Selecione a Trilha de Governança
+                        </h4>
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                            <!-- Track 1: Traditional -->
+                            <div class="np-track-card cursor-pointer border-2 border-slate-200 rounded-xl p-6 hover:border-blue-500 hover:shadow-lg transition-all group"
+                                data-track="traditional">
+                                <div
+                                    class="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mb-4 text-2xl group-hover:scale-110 transition-transform">
+                                    🏢</div>
+                                <h5 class="font-bold text-slate-800 mb-2">Tradicional / Preditivo</h5>
+                                <p class="text-xs text-slate-500 mb-4">Para projetos complexos, engenharia ou contratos
+                                    fixos. Exige rigor no planejamento e controle.</p>
+                                <ul class="text-xs text-slate-600 space-y-1 list-disc pl-4">
+                                    <li>Ciclo de Vida em Fases</li>
+                                    <li>Gantt & Caminho Crítico</li>
+                                    <li>Quality Gates (PDD)</li>
+                                </ul>
+                            </div>
+
+                            <!-- Track 2: Agile -->
+                            <div class="np-track-card cursor-pointer border-2 border-slate-200 rounded-xl p-6 hover:border-purple-500 hover:shadow-lg transition-all group"
+                                data-track="agile">
+                                <div
+                                    class="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center mb-4 text-2xl group-hover:scale-110 transition-transform">
+                                    🚀</div>
+                                <h5 class="font-bold text-slate-800 mb-2">Ágil / Adaptativo</h5>
+                                <p class="text-xs text-slate-500 mb-4">Para desenvolvimento de software e inovação. Foco
+                                    em entregas contínuas e adaptação.</p>
+                                <ul class="text-xs text-slate-600 space-y-1 list-disc pl-4">
+                                    <li>Sprints & Backlog</li>
+                                    <li>Kanban Avançado</li>
+                                    <li>Wiki do Produto</li>
+                                </ul>
+                            </div>
+
+                            <!-- Track 3: Quick Win -->
+                            <div class="np-track-card cursor-pointer border-2 border-slate-200 rounded-xl p-6 hover:border-green-500 hover:shadow-lg transition-all group"
+                                data-track="quick">
+                                <div
+                                    class="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mb-4 text-2xl group-hover:scale-110 transition-transform">
+                                    ⚡</div>
+                                <h5 class="font-bold text-slate-800 mb-2">Quick Win / Fast Track</h5>
+                                <p class="text-xs text-slate-500 mb-4">Para demandas de tiro curto e baixo risco. Mínima
+                                    burocracia.</p>
+                                <ul class="text-xs text-slate-600 space-y-1 list-disc pl-4">
+                                    <li>Sem Gantt Complexo</li>
+                                    <li>Matriz RACI Simplificada</li>
+                                    <li>Updates via E-mail</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- WIZARD STEP 2: DETAILS FORM -->
+                    <div id="np-step-2" class="hidden flex-col max-h-full">
+                        <!-- Tabs Header -->
+                        <div class="flex border-b border-gray-200 px-6">
+                            <button
+                                class="px-4 py-3 text-sm font-medium text-blue-600 border-b-2 border-blue-600 focus:outline-none"
+                                data-tab="np-general">1. Identificação</button>
+                            <button
+                                class="px-4 py-3 text-sm font-medium text-gray-500 hover:text-gray-700 focus:outline-none"
+                                data-tab="np-class">2. Classificação</button>
+                            <button
+                                class="px-4 py-3 text-sm font-medium text-gray-500 hover:text-gray-700 focus:outline-none"
+                                data-tab="np-metrics">3. Faróis & Prazos</button>
+                        </div>
+
+                        <!-- Form Body -->
+                        <div class="p-8 overflow-y-auto custom-scrollbar">
+                            <form id="form-new-project" class="space-y-6">
+
+                                <!-- TAB 1: IDENTIFICATION & GENERAL -->
+                                <div id="np-general" class="tab-section space-y-6">
+                                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                        <div>
+                                            <label class="block text-sm font-semibold text-slate-700 mb-1">Nome do
+                                                Projeto
+                                                <span class="text-red-500">*</span></label>
+                                            <input type="text" id="np-name" required
+                                                class="w-full px-4 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+                                                placeholder="Ex: Migração Cloud V2">
+                                        </div>
+                                        <div>
+                                            <label class="block text-sm font-semibold text-slate-700 mb-1">PEP /
+                                                Código</label>
+                                            <input type="text" id="np-pep"
+                                                class="w-full px-4 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 outline-none"
+                                                placeholder="Ex: P-2024-001">
+                                        </div>
+                                        <div>
+                                            <label class="block text-sm font-semibold text-slate-700 mb-1">Gerente
+                                                Responsável</label>
+                                            <input type="text" id="np-manager"
+                                                class="w-full px-4 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 outline-none"
+                                                placeholder="Nome do GP">
+                                        </div>
+                                        <div class="flex items-end pb-2">
+                                            <label class="flex items-center gap-3 cursor-pointer">
+                                                <input type="checkbox" id="np-lei-bem"
+                                                    class="w-5 h-5 text-blue-600 rounded focus:ring-blue-500 border-gray-300">
+                                                <span class="text-slate-700 font-medium">Aplicável Lei do Bem? ⚖️</span>
+                                            </label>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-semibold text-slate-700 mb-1">Descrição</label>
+                                        <textarea id="np-desc" rows="3"
+                                            class="w-full px-4 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 outline-none resize-none"></textarea>
+                                    </div>
+                                </div>
+
+                                <!-- TAB 2: CLASSIFICATION (Smart Selects) -->
+                                <div id="np-class" class="tab-section hidden space-y-6">
+                                    <div class="bg-blue-50 border border-blue-100 rounded-lg p-4 mb-4">
+                                        <p class="text-sm text-blue-800 flex items-center gap-2">
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                    d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z">
+                                                </path>
+                                            </svg>
+                                            Dica: Digite um novo valor para cadastrá-lo automaticamente.
+                                        </p>
+                                    </div>
+
+                                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                        <!-- Cliente -->
+                                        <div class="relative group">
+                                            <label
+                                                class="block text-sm font-semibold text-slate-700 mb-1">Cliente</label>
+                                            <input type="text" id="np-client" list="list-clients"
+                                                class="w-full px-4 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 outline-none"
+                                                placeholder="Selecione ou digite..">
+                                            <datalist id="list-clients">
+                                                <!-- Hydrated by JS -->
+                                            </datalist>
+                                        </div>
+
+                                        <!-- Produto -->
+                                        <div>
+                                            <label
+                                                class="block text-sm font-semibold text-slate-700 mb-1">Produto</label>
+                                            <input type="text" id="np-product" list="list-products"
+                                                class="w-full px-4 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 outline-none"
+                                                placeholder="Selecione ou digite..">
+                                            <datalist id="list-products">
+                                                <!-- Hydrated by JS -->
+                                            </datalist>
+                                        </div>
+
+                                        <!-- Categoria -->
+                                        <div>
+                                            <label
+                                                class="block text-sm font-semibold text-slate-700 mb-1">Categoria</label>
+                                            <input type="text" id="np-category" list="list-categories"
+                                                class="w-full px-4 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 outline-none"
+                                                placeholder="Selecione ou digite..">
+                                            <datalist id="list-categories">
+                                                <!-- Hydrated by JS -->
+                                            </datalist>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- TAB 3: METRICS & DATES -->
+                                <div id="np-metrics" class="tab-section hidden space-y-8">
+                                    <!-- Faróis -->
+                                    <div>
+                                        <h4
+                                            class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4 border-b pb-2">
+                                            Status Inicial (Faróis)</h4>
+                                        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                            <div>
+                                                <label class="block text-sm font-semibold text-slate-700 mb-1">Farol
+                                                    Escopo</label>
+                                                <select id="np-scope"
+                                                    class="w-full px-3 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 outline-none">
+                                                    <option value="dentro">🟢 Dentro do Escopo</option>
+                                                    <option value="fora_cliente">🟡 Fora (Motivo Cliente)</option>
+                                                    <option value="fora_empresa">🔴 Fora (Motivo Empresa)</option>
+                                                </select>
+                                            </div>
+                                            <div>
+                                                <label class="block text-sm font-semibold text-slate-700 mb-1">Farol
+                                                    Custo</label>
+                                                <select id="np-cost"
+                                                    class="w-full px-3 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 outline-none">
+                                                    <option value="verde">🟢 No Orçamento</option>
+                                                    <option value="amarelo">🟡 Alerta</option>
+                                                    <option value="vermelho">🔴 Estourado</option>
+                                                </select>
+                                            </div>
+                                            <div>
+                                                <label class="block text-sm font-semibold text-slate-700 mb-1">Farol
+                                                    Prazo</label>
+                                                <select id="np-time"
+                                                    class="w-full px-3 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 outline-none">
+                                                    <option value="verde">🟢 No Prazo</option>
+                                                    <option value="amarelo">🟡 Risco de Atraso</option>
+                                                    <option value="vermelho">🔴 Atrasado</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Cronograma Grid -->
+                                    <div>
+                                        <h4
+                                            class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4 border-b pb-2">
+                                            Cronograma (Estimado vs Real)</h4>
+                                        <div class="overflow-x-auto">
+                                            <table class="w-full text-sm text-left">
+                                                <thead class="text-gray-500 bg-gray-50">
+                                                    <tr>
+                                                        <th class="px-2 py-2">Marco</th>
+                                                        <th class="px-2 py-2">Data Estimada</th>
+                                                        <th class="px-2 py-2">Data Real</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody class="divide-y divide-gray-100">
+                                                    <tr>
+                                                        <td class="px-2 py-3 font-medium">Início</td>
+                                                        <td class="px-2"><input type="date" id="np-start-est"
+                                                                class="w-full p-1 border rounded text-xs "></td>
+                                                        <td class="px-2"><input type="date" id="np-start-real"
+                                                                class="w-full p-1 border rounded text-xs bg-gray-50">
+                                                        </td>
+                                                    </tr>
+                                                    <tr>
+                                                        <td class="px-2 py-3 font-medium">Go! Live</td>
+                                                        <td class="px-2"><input type="date" id="np-go-est"
+                                                                class="w-full p-1 border rounded text-xs"></td>
+                                                        <td class="px-2"><input type="date" id="np-go-real"
+                                                                class="w-full p-1 border rounded text-xs bg-gray-50">
+                                                        </td>
+                                                    </tr>
+                                                    <tr>
+                                                        <td class="px-2 py-3 font-medium">Término</td>
+                                                        <td class="px-2"><input type="date" id="np-end-est"
+                                                                class="w-full p-1 border rounded text-xs"></td>
+                                                        <td class="px-2"><input type="date" id="np-end-real"
+                                                                class="w-full p-1 border rounded text-xs bg-gray-50">
+                                                        </td>
+                                                    </tr>
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+
+                                    <!-- Horas -->
+                                    <div class="grid grid-cols-2 gap-6 pt-4 border-t border-gray-100">
+                                        <div>
+                                            <label class="block text-sm font-semibold text-slate-700 mb-1">Horas
+                                                Estimadas</label>
+                                            <input type="number" id="np-hours-est"
+                                                class="w-full px-4 py-2 rounded-lg border border-slate-300"
+                                                placeholder="0">
+                                        </div>
+                                        <div>
+                                            <label class="block text-sm font-semibold text-slate-700 mb-1">Horas
+                                                Apontadas</label>
+                                            <input type="number" id="np-hours-real"
+                                                class="w-full px-4 py-2 rounded-lg border border-slate-300 bg-gray-50"
+                                                placeholder="0" readonly>
+                                        </div>
+                                    </div>
+                                </div>
+                            </form>
+                        </div>
+
+                        <!-- Footer Buttons -->
+                        <div class="p-6 border-t border-gray-100 flex justify-end gap-3 bg-gray-50 rounded-b-xl">
+                            <button id="btn-back-step-1"
+                                class="px-6 py-2 rounded-lg text-slate-600 font-medium hover:bg-white hover:shadow-sm transition-all border border-transparent hover:border-gray-200">Voltar</button>
+                            <button id="btn-save-new-project"
+                                class="px-6 py-2 rounded-lg bg-blue-600 text-white font-bold hover:bg-blue-700 shadow-md transform active:scale-95 transition-all">Salvar
+                                Projeto</button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -252,8 +604,16 @@
         <section id="view-projects" class="view-section hidden">
             <header class="flex justify-between items-center mb-8">
                 <h1 class="text-3xl font-bold text-gray-800">Pipeline & Cronograma</h1>
-                <button class="bg-blue-600 text-white px-4 py-2 rounded shadow">+ Nova
-                    Demanda</button>
+                <div class="flex gap-4">
+                    <select id="project-group-filter"
+                        class="bg-white border border-slate-300 text-slate-700 px-3 py-2 rounded shadow-sm hover:bg-slate-50 outline-none">
+                        <option value="status">Agrupar por: Status (Pipeline)</option>
+                        <option value="client">Agrupar por: Cliente</option>
+                        <option value="manager">Agrupar por: Gerente</option>
+                    </select>
+                    <button class="bg-blue-600 text-white px-4 py-2 rounded shadow hover:bg-blue-700"
+                        onclick="document.getElementById('btn-new-project').click()">+ Novo Projeto</button>
+                </div>
             </header>
 
             <!-- Calendar Section -->
@@ -262,25 +622,15 @@
                 <div id="calendar-container"></div>
             </div>
 
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <!-- Ideia -->
-                <div class="kanban-col">
-                    <h3 class="font-bold text-gray-600 mb-4 px-2 uppercase text-xs tracking-wider">
-                        Ideias</h3>
-                    <div id="col-ideia" class="space-y-2"></div>
-                </div>
-                <!-- Análise -->
-                <div class="kanban-col">
-                    <h3 class="font-bold text-yellow-600 mb-4 px-2 uppercase text-xs tracking-wider">
-                        Em Análise</h3>
-                    <div id="col-analise" class="space-y-2"></div>
-                </div>
-                <!-- Aprovado -->
-                <div class="kanban-col">
-                    <h3 class="font-bold text-green-600 mb-4 px-2 uppercase text-xs tracking-wider">
-                        Aprovado</h3>
-                    <div id="col-aprovado" class="space-y-2"></div>
-                </div>
+            <div id="projects-view-container" class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <!-- Dynamic Content will be rendered here by ProjectsList.js -->
+            </div>
+
+            <!-- Hidden Templates for Legacy Support if needed, or we just generate everything in JS -->
+            <div id="legacy-cols" class="hidden">
+                <div id="col-ideia"></div>
+                <div id="col-analise"></div>
+                <div id="col-aprovado"></div>
             </div>
         </section>
 
@@ -357,42 +707,46 @@
             </div>
 
             <div id="pd-gantt" class="pd-tab-content hidden">
-                 <div class="flex justify-end mb-2">
+                <div class="flex justify-end mb-2">
                     <div class="inline-flex rounded-md shadow-sm" role="group">
-                        <button type="button" onclick="GanttChart.changeView('Day')" class="px-4 py-2 text-sm font-medium text-gray-900 bg-white border border-gray-200 rounded-s-lg hover:bg-gray-100 focus:z-10 focus:ring-2 focus:ring-blue-700 focus:text-blue-700">Dia</button>
-                        <button type="button" onclick="GanttChart.changeView('Week')" class="px-4 py-2 text-sm font-medium text-gray-900 bg-white border-t border-b border-gray-200 hover:bg-gray-100 focus:z-10 focus:ring-2 focus:ring-blue-700 focus:text-blue-700">Semana</button>
-                        <button type="button" onclick="GanttChart.changeView('Month')" class="px-4 py-2 text-sm font-medium text-gray-900 bg-white border border-gray-200 rounded-e-lg hover:bg-gray-100 focus:z-10 focus:ring-2 focus:ring-blue-700 focus:text-blue-700">Mês</button>
+                        <button type="button" onclick="GanttChart.changeView('Day')"
+                            class="px-4 py-2 text-sm font-medium text-gray-900 bg-white border border-gray-200 rounded-s-lg hover:bg-gray-100 focus:z-10 focus:ring-2 focus:ring-blue-700 focus:text-blue-700">Dia</button>
+                        <button type="button" onclick="GanttChart.changeView('Week')"
+                            class="px-4 py-2 text-sm font-medium text-gray-900 bg-white border-t border-b border-gray-200 hover:bg-gray-100 focus:z-10 focus:ring-2 focus:ring-blue-700 focus:text-blue-700">Semana</button>
+                        <button type="button" onclick="GanttChart.changeView('Month')"
+                            class="px-4 py-2 text-sm font-medium text-gray-900 bg-white border border-gray-200 rounded-e-lg hover:bg-gray-100 focus:z-10 focus:ring-2 focus:ring-blue-700 focus:text-blue-700">Mês</button>
                     </div>
-                 </div>
-                 <div id="pd-gantt-chart" class="w-full overflow-x-auto bg-white p-4 rounded-xl shadow-sm min-h-[400px]"></div>
+                </div>
+                <div id="pd-gantt-chart" class="w-full overflow-x-auto bg-white p-4 rounded-xl shadow-sm min-h-[400px]">
+                </div>
             </div>
-                                </div>
-                            </div>
+            </div>
+            </div>
 
-                            <!-- Tab Contents -->
-                            <div id="pd-board" class="pd-tab-content h-[600px]">
-                                <div id="kanban-board-container" class="h-full">
-                                    <!-- Kanban Component Renders Here -->
-                                </div>
-                            </div>
+            <!-- Tab Contents -->
+            <div id="pd-board" class="pd-tab-content h-[600px]">
+                <div id="kanban-board-container" class="h-full">
+                    <!-- Kanban Component Renders Here -->
+                </div>
+            </div>
 
-                            <div id="pd-list" class="pd-tab-content hidden">
-                                <div class="bg-white rounded-xl shadow-sm overflow-hidden">
-                                    <table class="w-full text-sm text-left">
-                                        <thead class="bg-slate-50 border-b">
-                                            <tr>
-                                                <th class="py-3 px-4">Tarefa</th>
-                                                <th class="py-3 px-4">Prioridade</th>
-                                                <th class="py-3 px-4">Status</th>
-                                                <th class="py-3 px-4 text-right">Ações</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody id="pd-task-list-body">
-                                            <!-- Task List Renders Here -->
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </div>
+            <div id="pd-list" class="pd-tab-content hidden">
+                <div class="bg-white rounded-xl shadow-sm overflow-hidden">
+                    <table class="w-full text-sm text-left">
+                        <thead class="bg-slate-50 border-b">
+                            <tr>
+                                <th class="py-3 px-4">Tarefa</th>
+                                <th class="py-3 px-4">Prioridade</th>
+                                <th class="py-3 px-4">Status</th>
+                                <th class="py-3 px-4 text-right">Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody id="pd-task-list-body">
+                            <!-- Task List Renders Here -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
         </section>
 
         <!-- Financial View -->

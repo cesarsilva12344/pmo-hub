@@ -1,6 +1,7 @@
+import config from './config.js';
 
-const SUPABASE_URL = 'https://pmrmbddwlwhohjbvkxmf.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBtcm1iZGR3bHdob2hqYnZreG1mIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQyNjMzNDgsImV4cCI6MjA3OTgzOTM0OH0.Xk5hTWaiLKnJUfUv0ePFINUp';
+const SUPABASE_URL = config.supabaseUrl;
+const SUPABASE_ANON_KEY = config.supabaseAnonKey;
 
 // Check if the global supabase object is available (from CDN)
 if (!window.supabase) {

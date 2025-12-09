@@ -1,120 +1,128 @@
--- Cleanup existing tables if needed (Be careful in production)
--- drop table if exists task_dependencies;
--- drop table if exists tasks;
--- drop table if exists projects;
--- drop table if exists profiles;
--- drop type if exists priority_level;
--- drop type if exists task_status;
+-- Limpeza de Schema (Reset)
+-- CUIDADO: Isso apagará todos os dados existentes nas tabelas abaixo!
+drop table if exists public.inbox_items cascade;
+drop table if exists public.time_logs cascade;
+drop table if exists public.tasks cascade;
+drop table if exists public.projects cascade;
+drop table if exists public.users cascade;
 
--- 1. Enums
-create type priority_level as enum ('low', 'medium', 'high', 'critical');
-create type task_status as enum ('todo', 'in_progress', 'review', 'done');
+-- Habilitar extensão de UUID
+create extension if not exists "uuid-ossp";
 
--- 2. Profiles (Linked to auth.users)
-create table if not exists profiles (
-  id uuid references auth.users on delete cascade not null primary key,
-  full_name text,
-  role text default 'Member',
+-- 1. Usuários e Funções (RBAC Simplificado)
+create table public.users (
+  id uuid default uuid_generate_v4() primary key,
+  email text unique not null,
+  full_name text not null,
+  role text check (role in ('admin', 'manager', 'member', 'viewer')) default 'member',
   avatar_url text,
-  updated_at timestamp with time zone
+  hourly_rate numeric(10, 2) default 0.00,
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null
 );
 
--- 3. Projects
-create table if not exists projects (
-  id uuid default gen_random_uuid() primary key,
-  created_at timestamp with time zone default timezone('utc'::text, now()) not null,
-  title text not null,
+-- 2. Projetos (Aprimorado)
+create table public.projects (
+  id uuid default uuid_generate_v4() primary key,
+  name text not null,
   description text,
+  status text check (status in ('Em Planejamento', 'Execução', 'Monitoramento', 'Entregue', 'Cancelado')) default 'Em Planejamento',
+  client text,
+  manager_id uuid references public.users(id),
+  
+  -- Dimensões
+  track text check (track in ('traditional', 'agile', 'quick_win')), 
+  category text, 
+  product text,
+  pep_code text,
+
+  -- Indicadores de Saúde (RAG: Vermelho, Amarelo, Verde)
+  health_scope text default 'green',
+  health_time text default 'green',
+  health_cost text default 'green',
+  
+  -- Datas
+  start_date_est date,
+  end_date_est date,
+  start_date_real date,
+  end_date_real date,
+  
+  -- Financeiro (Calculado ou Orçado)
+  budget_total numeric(12, 2) default 0.00,
+  cost_actual numeric(12, 2) default 0.00,
+  
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null,
+  updated_at timestamp with time zone default timezone('utc'::text, now()) not null
+);
+
+-- 3. Tarefas (Suporte a Gantt e Kanban)
+create table public.tasks (
+  id uuid default uuid_generate_v4() primary key,
+  project_id uuid references public.projects(id) on delete cascade,
+  parent_id uuid references public.tasks(id), -- Hierarquia
+  
+  name text not null,
+  description text,
+  status text default 'todo', -- todo, in_progress, review, done
+  priority text default 'medium',
+  
+  -- Atribuição
+  assignee_id uuid references public.users(id),
+  
+  -- Agendamento
   start_date date,
   end_date date,
-  owner_id uuid references profiles(id),
-  status text default 'planning'
+  duration_days integer,
+  progress integer default 0, -- 0 a 100
+  
+  -- Dependências (Coluna predecessora simples para Gantt básico)
+  predecessor_id uuid references public.tasks(id),
+  dependency_type text default 'FS', -- FS (Término-Início), SS, FF, SF
+  
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null
 );
 
--- 4. Tasks
-create table if not exists tasks (
-  id uuid default gen_random_uuid() primary key,
-  created_at timestamp with time zone default timezone('utc'::text, now()) not null,
-  project_id uuid references projects(id) on delete cascade not null,
-  title text not null,
-  description text,
-  assignee_id uuid references profiles(id),
-  status task_status default 'todo',
-  priority priority_level default 'medium',
-  start_date date,
-  end_date date,
-  estimated_hours numeric default 0,
-  parent_id uuid references tasks(id), -- For subtasks
-  "order" integer default 0 -- For Kanban sorting
+-- 4. Logs de Tempo (Timesheet e EVM)
+create table public.time_logs (
+  id uuid default uuid_generate_v4() primary key,
+  task_id uuid references public.tasks(id),
+  user_id uuid references public.users(id),
+  project_id uuid references public.projects(id), -- Desnormalizado para velocidade de consulta
+  
+  duration_minutes integer not null,
+  cost_calulated numeric(10, 2), -- Snapshot do custo no momento logado
+  log_date timestamp with time zone default timezone('utc'::text, now()) not null,
+  
+  source text check (source in ('manual', 'pomodoro', 'import')) default 'manual',
+  notes text,
+  
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null
 );
 
--- 5. Task Dependencies (Gantt)
-create table if not exists task_dependencies (
-  id uuid default gen_random_uuid() primary key,
-  predecessor_task_id uuid references tasks(id) on delete cascade not null,
-  successor_task_id uuid references tasks(id) on delete cascade not null,
-  type text default 'fs' -- fs (finish-to-start), ss, ff, sf
+-- 5. Inbox (GTD)
+create table public.inbox_items (
+  id uuid default uuid_generate_v4() primary key,
+  user_id uuid references public.users(id),
+  content text not null,
+  is_processed boolean default false,
+  processed_at timestamp with time zone,
+  
+  -- Link para artefato criado se processado
+  converted_to_project_id uuid references public.projects(id),
+  converted_to_task_id uuid references public.tasks(id),
+  
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null
 );
 
--- 6. RLS (Row Level Security)
-alter table profiles enable row level security;
-alter table projects enable row level security;
-alter table tasks enable row level security;
-alter table task_dependencies enable row level security;
+-- Políticas RLS (Segurança em Nível de Linha) - Configuração Básica
+alter table public.projects enable row level security;
+alter table public.tasks enable row level security;
 
--- Policies (Simple 'Authenticated' access for now, refine later)
--- PROFILES
-create policy "Public profiles are viewable by everyone" 
-  on profiles for select using ( true );
-create policy "Users can insert their own profile" 
-  on profiles for insert with check ( auth.uid() = id );
-create policy "Users can update own profile" 
-  on profiles for update using ( auth.uid() = id );
+-- Política: Permitir acesso de leitura a tudo por enquanto (Modo Protótipo)
+create policy "Allow all read access" on public.projects for select using (true);
+create policy "Allow all insert access" on public.projects for insert with check (true);
+create policy "Allow all update access" on public.projects for update using (true);
 
--- PROJECTS
-create policy "Authenticated users can select projects" 
-  on projects for select using ( auth.role() = 'authenticated' );
-create policy "Authenticated users can create projects" 
-  on projects for insert with check ( auth.role() = 'authenticated' );
-create policy "Authenticated users can update projects" 
-  on projects for update using ( auth.role() = 'authenticated' );
-
--- TASKS
-create policy "Authenticated users can select tasks" 
-  on tasks for select using ( auth.role() = 'authenticated' );
-create policy "Authenticated users can create tasks" 
-  on tasks for insert with check ( auth.role() = 'authenticated' );
-create policy "Authenticated users can update tasks" 
-  on tasks for update using ( auth.role() = 'authenticated' );
-
--- DEPENDENCIES
-create policy "Authenticated users can manage dependencies" 
-  on task_dependencies for all using ( auth.role() = 'authenticated' );
-
-
--- Trigger to handle new user signup
-create or replace function public.handle_new_user() 
-returns trigger as $$
-begin
-  insert into public.profiles (id, full_name, avatar_url)
-  values (new.id, new.raw_user_meta_data->>'full_name', new.raw_user_meta_data->>'avatar_url');
-  return new;
-end;
-$$ language plpgsql security definer;
-
-create or replace trigger on_auth_user_created
-  after insert on auth.users
-  for each row execute procedure public.handle_new_user();
-
--- PMO Specific Fields Update (2025-12-09)
-ALTER TABLE projects
-ADD COLUMN IF NOT EXISTS client text, -- Ex: ALELO
-ADD COLUMN IF NOT EXISTS pep text, -- Ex: 0040003544-83/D20
-ADD COLUMN IF NOT EXISTS cost_mode text, -- Ex: Cliente, CAPEX, OPEX
-ADD COLUMN IF NOT EXISTS total_estimated_hours numeric, -- Ex: 188
-ADD COLUMN IF NOT EXISTS go_live_date timestamp with time zone, -- Data Go!Live
--- Faróis de Status (Health Checks)
-ADD COLUMN IF NOT EXISTS health_scope text DEFAULT 'green', -- Ex: Escopo original
-ADD COLUMN IF NOT EXISTS health_cost text DEFAULT 'green', -- Ex: Fora do orçado
-ADD COLUMN IF NOT EXISTS health_time text DEFAULT 'green', -- Ex: Em atraso
-ADD COLUMN IF NOT EXISTS tags text[]; -- Array de tags, ex: ['Lei do Bem', 'RPA']
+-- Índices para performance
+create index idx_projects_manager on public.projects(manager_id);
+create index idx_tasks_project on public.tasks(project_id);
+create index idx_timelogs_project on public.time_logs(project_id);

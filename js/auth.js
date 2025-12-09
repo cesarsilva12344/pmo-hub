@@ -3,7 +3,7 @@ import { supabaseClient } from './supabase-client.js';
 export const Auth = {
     client: supabaseClient,
 
-    login: async (email, password) => {
+    login: async function (email, password) {
         if (!supabaseClient) {
             // Fallback for demo if no Supabase credentials
             if (email === 'demo@pmo.com' && password === 'demo') {
@@ -19,8 +19,8 @@ export const Auth = {
         });
 
         if (error) {
-            alert('Erro ao entrar: ' + error.message);
-            console.error(error);
+            console.error('Login Error:', error);
+            alert('Falha no Login: ' + (error.message || error.error_description || 'Erro desconhecido'));
         } else {
             console.log('Login efetuado:', data);
             window.location.href = 'index.html';

@@ -1,0 +1,11 @@
+{
+    "name": "pmo-hub",
+    "version": "1.0.0",
+    "description": "PMO Hub Project",
+    "scripts": {
+        "start": "npx http-server . -p 8080 -c-1"
+    },
+    "keywords": [],
+    "author": "",
+    "license": "ISC"
+}

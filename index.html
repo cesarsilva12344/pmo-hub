@@ -14,7 +14,16 @@
     <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
     <!-- Supabase CDN -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <!-- File Parsing Libs -->
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/fast-xml-parser/4.3.2/fxp.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <!-- Visual Libs -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.2/Sortable.min.js"></script>
+    <script src='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.js'></script>
     <script>
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
         // PWA Register
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
@@ -85,12 +94,57 @@
             <header class="flex justify-between items-center mb-8">
                 <h1 class="text-3xl font-bold text-gray-800">Visão Geral do Portfólio</h1>
                 <div class="flex gap-4">
+                    <button id="btn-import-project"
+                        class="bg-white border border-slate-300 text-slate-700 px-4 py-2 rounded shadow-sm hover:bg-slate-50 flex items-center gap-2">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                        </svg>
+                        Importar
+                    </button>
                     <button id="btn-new-project"
                         class="bg-blue-600 text-white px-4 py-2 rounded shadow hover:bg-blue-700">+
                         Novo
                         Projeto</button>
                 </div>
             </header>
+
+            <!-- Import Modal -->
+            <div id="import-modal"
+                class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-50">
+                <div class="bg-white rounded-xl shadow-2xl w-full max-w-lg p-6">
+                    <div class="flex justify-between items-center mb-6">
+                        <h3 class="text-xl font-bold text-slate-800">Importar Arquivo</h3>
+                        <button id="btn-close-import" class="text-slate-400 hover:text-slate-600">✕</button>
+                    </div>
+
+                    <div class="border-2 border-dashed border-slate-300 rounded-lg p-8 text-center hover:bg-slate-50 transition-colors"
+                        id="drop-zone">
+                        <input type="file" id="file-input" class="hidden" accept=".xlsx,.xml,.pdf">
+                        <svg class="w-12 h-12 text-slate-400 mx-auto mb-4" fill="none" stroke="currentColor"
+                            viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                        </svg>
+                        <p class="text-slate-600 font-medium mb-1">Arraste e solte ou clique para selecionar</p>
+                        <p class="text-xs text-slate-400">Suporta: Excel (.xlsx), MS Project (.xml), PDF (.pdf)</p>
+                    </div>
+
+                    <div id="import-preview" class="hidden mt-6 bg-slate-50 p-4 rounded border border-slate-200">
+                        <div class="flex items-center gap-3 mb-2">
+                            <span class="text-2xl" id="file-icon">📄</span>
+                            <div>
+                                <p class="font-bold text-sm text-slate-700" id="file-name">projeto.xlsx</p>
+                                <p class="text-xs text-slate-500" id="file-size">120kb</p>
+                            </div>
+                        </div>
+                        <button id="btn-process-import"
+                            class="w-full bg-blue-600 text-white py-2 rounded font-bold hover:bg-blue-700 mt-2">
+                            Processar Importação
+                        </button>
+                    </div>
+                </div>
+            </div>
 
             <!-- Stats Grid -->
             <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
@@ -139,73 +193,139 @@
                                     <th class="py-2">Data</th>
                                     <th class="py-2">Projeto</th>
                                     <th class="py-2">Saúde</th>
-                                    <div class="flex gap-8">
-                                        <!-- Matrix -->
-                                        <div class="bg-white p-6 rounded-xl shadow-sm">
-                                            <h3 class="font-bold mb-4 text-center">Matriz Probabilidade x Impacto</h3>
-                                            <div class="relative">
-                                                <!-- Y Axis Label -->
-                                                <div
-                                                    class="absolute -left-8 top-1/2 -rotate-90 text-sm font-bold text-gray-500">
-                                                    Probabilidade
-                                                </div>
-                                                <!-- X Axis Label -->
-                                                <div
-                                                    class="absolute -bottom-8 left-1/2 -translate-x-1/2 text-sm font-bold text-gray-500">
-                                                    Impacto</div>
+                                    <th class="py-2">Autor</th>
+                                    <th class="py-2">Ação</th>
+                                </tr>
+                            </thead>
+                            <tbody id="report-list">
+                                <!-- Populated by JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+        </section>
 
-                                                <div id="risk-matrix" class="risk-matrix border-2 border-slate-300">
-                                                    <!-- Matrix Cells generated by JS -->
-                                                </div>
-                                            </div>
-                                        </div>
+        <!-- Risks View -->
+        <section id="view-risks" class="view-section hidden">
+            <header class="mb-8">
+                <h1 class="text-3xl font-bold text-gray-800">Matriz de Riscos</h1>
+            </header>
+            <div class="flex gap-8 overflow-x-auto">
+                <!-- Matrix -->
+                <div class="bg-white p-6 rounded-xl shadow-sm">
+                    <h3 class="font-bold mb-4 text-center">Matriz Probabilidade x Impacto
+                    </h3>
+                    <div class="relative">
+                        <!-- Y Axis Label -->
+                        <div class="absolute -left-8 top-1/2 -rotate-90 text-sm font-bold text-gray-500">
+                            Probabilidade
+                        </div>
+                        <!-- X Axis Label -->
+                        <div class="absolute -bottom-8 left-1/2 -translate-x-1/2 text-sm font-bold text-gray-500">
+                            Impacto</div>
 
-                                        <!-- Risk List -->
-                                        <div class="flex-1 bg-white p-6 rounded-xl shadow-sm">
-                                            <div class="flex justify-between items-center mb-4">
-                                                <h3 class="font-bold">Riscos Críticos</h3>
-                                                <button class="text-sm text-blue-600 hover:underline">+ Novo
-                                                    Risco</button>
-                                            </div>
-                                            <div id="risk-list" class="space-y-2">
-                                                <!-- Risk Items -->
-                                                <p class="text-gray-500 text-sm">Nenhum risco crítico identificado.</p>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <!-- Pipeline View -->
-                                    <!-- Pipeline View -->
-                                    <section id="view-projects" class="view-section hidden">
-                                        <header class="flex justify-between items-center mb-8">
-                                            <h1 class="text-3xl font-bold text-gray-800">Pipeline de Demandas</h1>
-                                            <button class="bg-blue-600 text-white px-4 py-2 rounded shadow">+ Nova
-                                                Demanda</button>
-                                        </header>
+                        <div id="risk-matrix" class="risk-matrix border-2 border-slate-300">
+                            <!-- Matrix Cells generated by JS -->
+                        </div>
+                    </div>
+                </div>
 
-                                        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                                            <!-- Ideia -->
-                                            <div class="kanban-col">
-                                                <h3
-                                                    class="font-bold text-gray-600 mb-4 px-2 uppercase text-xs tracking-wider">
-                                                    Ideias</h3>
-                                                <div id="col-ideia" class="space-y-2"></div>
-                                            </div>
-                                            <!-- Análise -->
-                                            <div class="kanban-col">
-                                                <h3
-                                                    class="font-bold text-yellow-600 mb-4 px-2 uppercase text-xs tracking-wider">
-                                                    Em Análise</h3>
-                                                <div id="col-analise" class="space-y-2"></div>
-                                            </div>
-                                            <!-- Aprovado -->
-                                            <div class="kanban-col">
-                                                <h3
-                                                    class="font-bold text-green-600 mb-4 px-2 uppercase text-xs tracking-wider">
-                                                    Aprovado</h3>
-                                                <div id="col-aprovado" class="space-y-2"></div>
-                                            </div>
-                                        </div>
-                                    </section>
+                <!-- Risk List -->
+                <div class="flex-1 bg-white p-6 rounded-xl shadow-sm">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="font-bold">Riscos Críticos</h3>
+                        <button class="text-sm text-blue-600 hover:underline">+ Novo
+                            Risco</button>
+                    </div>
+                    <div id="risk-list" class="space-y-2">
+                        <!-- Risk Items -->
+                        <p class="text-gray-500 text-sm">Nenhum risco crítico identificado.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Pipeline View -->
+        <section id="view-projects" class="view-section hidden">
+            <header class="flex justify-between items-center mb-8">
+                <h1 class="text-3xl font-bold text-gray-800">Pipeline & Cronograma</h1>
+                <button class="bg-blue-600 text-white px-4 py-2 rounded shadow">+ Nova
+                    Demanda</button>
+            </header>
+
+            <!-- Calendar Section -->
+            <div class="mb-8 bg-white p-6 rounded-xl shadow-sm">
+                <h3 class="font-bold mb-4 text-slate-600">Calendário de Entregas</h3>
+                <div id="calendar-container"></div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <!-- Ideia -->
+                <div class="kanban-col">
+                    <h3 class="font-bold text-gray-600 mb-4 px-2 uppercase text-xs tracking-wider">
+                        Ideias</h3>
+                    <div id="col-ideia" class="space-y-2"></div>
+                </div>
+                <!-- Análise -->
+                <div class="kanban-col">
+                    <h3 class="font-bold text-yellow-600 mb-4 px-2 uppercase text-xs tracking-wider">
+                        Em Análise</h3>
+                    <div id="col-analise" class="space-y-2"></div>
+                </div>
+                <!-- Aprovado -->
+                <div class="kanban-col">
+                    <h3 class="font-bold text-green-600 mb-4 px-2 uppercase text-xs tracking-wider">
+                        Aprovado</h3>
+                    <div id="col-aprovado" class="space-y-2"></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Financial View -->
+        <section id="view-financial" class="view-section hidden">
+            <header class="mb-8">
+                <h1 class="text-3xl font-bold text-gray-800">Controle Financeiro</h1>
+            </header>
+            <div class="bg-white p-6 rounded-xl shadow-sm overflow-x-auto">
+                <table class="w-full text-sm text-left">
+                    <thead class="text-gray-500 border-b bg-gray-50">
+                        <tr>
+                            <th class="py-3 px-2">Projeto</th>
+                            <th class="py-3 px-2">Orçamento</th>
+                            <th class="py-3 px-2">Realizado</th>
+                            <th class="py-3 px-2">Previsto (EAC)</th>
+                            <th class="py-3 px-2">Status</th>
+                            <th class="py-3 px-2">AI Analysis</th>
+                        </tr>
+                    </thead>
+                    <tbody id="financial-list">
+                        <!-- JS Generated -->
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- Resources View -->
+        <section id="view-resources" class="view-section hidden">
+            <header class="mb-8">
+                <h1 class="text-3xl font-bold text-gray-800">Alocação de Recursos</h1>
+            </header>
+            <div id="resource-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <!-- JS Generated -->
+            </div>
+        </section>
+
+        <!-- Admin View -->
+        <section id="view-admin" class="view-section hidden">
+            <header class="mb-8">
+                <h1 class="text-3xl font-bold text-gray-800">Configurações do Sistema</h1>
+            </header>
+            <div class="bg-white p-6 rounded-xl shadow-sm">
+                <p class="text-gray-500">Configurações globais, gerenciamento de usuários e
+                    integrações serão implementados na próxima versão.</p>
+            </div>
+        </section>
     </main>
 
     <!-- Quick Actions FAB (Mobile Only) -->

@@ -10,6 +10,7 @@
     <link rel="stylesheet" href="css/style.css">
     <!-- Supabase CDN -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="js/secrets.js"></script>
 </head>
 
 <body class="bg-slate-50 font-inter">
@@ -119,8 +120,10 @@
 
             document.getElementById('loginForm').addEventListener('submit', (e) => {
                 e.preventDefault();
+                console.log('Formulário Submetido');
                 const email = document.getElementById('email').value;
                 const pass = document.getElementById('password').value;
+                console.log('Tentando login com:', email);
                 Auth.login(email, pass);
             });
 

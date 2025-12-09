@@ -11,6 +11,8 @@ import { Resources } from './components/resources.js';
 import { Reports } from './components/reports.js';
 import { Calendar } from './components/calendar.js';
 import { FileImporter } from './modules/file-importer.js';
+import { ProjectDetails } from './components/project-details.js';
+import { ProjectsList } from './components/projects-list.js';
 
 console.log('PMO Hub v15.1 Modular Loaded');
 
@@ -22,6 +24,8 @@ document.addEventListener('DOMContentLoaded', () => {
     // Init Modules
     Navigation.init();
     FileImporter.init();
+    Admin.init();
+    ProjectDetails.init();
 
     // Init Logic depends on route, but for now we render things when needed
     // Listen to View Changes to render specific components
@@ -30,11 +34,12 @@ document.addEventListener('DOMContentLoaded', () => {
         if (view === 'dashboard') Dashboard.render();
         if (view === 'risks') RiskMatrix.render();
         if (view === 'projects') {
-            Kanban.render();
+            ProjectsList.render();
             Calendar.render();
         }
         if (view === 'financial') Financial.render();
         if (view === 'resources') Resources.render();
+        if (view === 'admin') Admin.render();
     });
 
     // Subscribe Dashboard to State Changes

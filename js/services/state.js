@@ -1,6 +1,6 @@
-
 import { ProjectFactory } from './project-factory.js';
 import { Metrics } from '../metrics.js';
+import { Api } from './api.js';
 
 // Central State Management
 export const AppState = {
@@ -20,17 +20,23 @@ export const AppState = {
     },
 
     async loadProjects() {
-        // Mock Data Loading (Move to API service later)
-        if (this.projects.length === 0) {
+        // Try fetching from Supabase
+        const dbProjects = await Api.getProjects();
+
+        if (dbProjects && dbProjects.length > 0) {
+            this.projects = dbProjects;
+        } else {
+            console.log('No projects in DB or disconnected, using Mock Data.');
             this.projects = [
                 ProjectFactory.create('traditional', 'Implantação ERP', 'Acme Corp', 500000),
                 ProjectFactory.create('agile', 'App Mobile V2', 'Tech Solutions', 150000),
                 ProjectFactory.create('quick', 'Campanha Marketing', 'Retail SA', 20000)
             ];
-
-            // Mock Stats Enrichment
-            this._enrichMockData();
         }
+
+        // Mock Stats Enrichment (Ideally this comes from DB too, but keeping for now)
+        this._enrichMockData();
+
         this.notify();
     },
 
@@ -43,21 +49,21 @@ export const AppState = {
 
     _enrichMockData() {
         // Helper to add dummy data
-         this.projects[0].spent = 120000;
-         this.projects[0].status = 'Em Execução';
-         this.projects[0].risks = [
-             { title: 'Atraso Fornecedor', prob: 4, impact: 5 },
-             { title: 'Mudança Escopo', prob: 3, impact: 3 }
-         ];
-         this.projects[0].allocations = [
-             { resourceId: 1, role: 'GP', hours: 40 },
-             { resourceId: 2, role: 'Dev', hours: 80 }
-         ];
+        this.projects[0].spent = 120000;
+        this.projects[0].status = 'Em Execução';
+        this.projects[0].risks = [
+            { title: 'Atraso Fornecedor', prob: 4, impact: 5 },
+            { title: 'Mudança Escopo', prob: 3, impact: 3 }
+        ];
+        this.projects[0].allocations = [
+            { resourceId: 1, role: 'GP', hours: 40 },
+            { resourceId: 2, role: 'Dev', hours: 80 }
+        ];
 
-         this.projects[1].spent = 145000;
-         this.projects[1].status = 'Em Risco';
-         this.projects[1].risks = [{ title: 'Bug Crítico', prob: 5, impact: 5 }];
-         this.projects[1].allocations = [
+        this.projects[1].spent = 145000;
+        this.projects[1].status = 'Em Risco';
+        this.projects[1].risks = [{ title: 'Bug Crítico', prob: 5, impact: 5 }];
+        this.projects[1].allocations = [
             { resourceId: 2, role: 'Dev', hours: 120 },
             { resourceId: 3, role: 'QA', hours: 40 }
         ];

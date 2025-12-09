@@ -1,38 +1,54 @@
 
-import { Metrics } from '../metrics.js';
 import { AppState } from '../services/state.js';
 
 export const Dashboard = {
     render() {
-        const totalProjects = AppState.projects.length;
-        const totalBudget = AppState.projects.reduce((sum, p) => sum + p.budget, 0);
+        const projects = AppState.projects || [];
+        const totalProjects = projects.length;
 
-        // Update KPIs
-        const totalEl = document.getElementById('kpi-total-projects');
-        if (totalEl) totalEl.innerText = totalProjects;
+        // 1. Calculate KPIs
+        // Risk: Any project with red health in cost or time
+        const riskCount = projects.filter(p =>
+            p.health_cost === 'red' || p.health_time === 'red' || p.status === 'risk'
+        ).length;
 
-        const riskCount = AppState.projects.filter(p => Metrics.calculateWeightedHealth(p).status === 'Crítico').length;
-        const riskEl = document.getElementById('kpi-risk-projects');
-        if (riskEl) riskEl.innerText = riskCount;
+        // Budget (Estimated Hours as proxy for now, or sum custom field)
+        // If we had a budget column, we'd sum it. using total_estimated_hours * 150 (mock rate)
+        const totalHours = projects.reduce((sum, p) => sum + (Number(p.total_estimated_hours) || 0), 0);
+        const estimatedBudget = totalHours * 150;
 
-        const budgetEl = document.getElementById('kpi-budget');
-        if (budgetEl) budgetEl.innerText = `R$ ${(totalBudget / 1000).toFixed(1)}k`;
+        // Update DOM
+        this.safeSetText('kpi-total-projects', totalProjects);
+        this.safeSetText('kpi-risk-projects', riskCount);
+        this.safeSetText('kpi-budget', `R$ ${(estimatedBudget / 1000).toFixed(1)}k (Est.)`);
 
-        this.updateChartInvestment();
-        this.updateChartHealth();
+        // 2. Render Charts
+        this.renderInvestmentChart(projects);
+        this.renderHealthChart(projects);
     },
 
-    updateChartInvestment() {
-        const clients = {};
-        AppState.projects.forEach(p => {
-            if (!clients[p.client]) clients[p.client] = 0;
-            clients[p.client] += p.budget;
+    safeSetText(id, value) {
+        const el = document.getElementById(id);
+        if (el) el.innerText = value;
+    },
+
+    renderInvestmentChart(projects) {
+        // Group by Client
+        const clientData = {};
+        projects.forEach(p => {
+            const client = p.client || 'Interno';
+            // Using estimated hours as magnitude
+            const value = Number(p.total_estimated_hours) || 0;
+            clientData[client] = (clientData[client] || 0) + value;
         });
 
         const options = {
-            series: [{ name: 'Investimento', data: Object.values(clients) }],
+            series: [{ name: 'Horas Estimadas', data: Object.values(clientData) }],
             chart: { type: 'bar', height: 250, toolbar: { show: false } },
-            xaxis: { categories: Object.keys(clients) }
+            plotOptions: { bar: { borderRadius: 4, horizontal: true } },
+            colors: ['#3B82F6'],
+            xaxis: { categories: Object.keys(clientData) },
+            title: { text: 'Volume por Cliente (Horas)', align: 'left', style: { fontSize: '14px' } }
         };
 
         const chartEl = document.querySelector("#chart-investment");
@@ -43,21 +59,32 @@ export const Dashboard = {
         }
     },
 
-    updateChartHealth() {
-        let healthCounts = { green: 0, yellow: 0, red: 0 };
-        AppState.projects.forEach(p => {
-            const wHealth = Metrics.calculateWeightedHealth(p);
-            if (wHealth.status === 'Otimizado') healthCounts.green++;
-            else if (wHealth.status === 'Atenção') healthCounts.yellow++;
-            else healthCounts.red++;
+    renderHealthChart(projects) {
+        // Count by worst health indicator
+        let green = 0, yellow = 0, red = 0;
+
+        projects.forEach(p => {
+            // Determine global health based on worst indicator
+            const statuses = [p.health_scope, p.health_cost, p.health_time];
+            if (statuses.includes('red')) red++;
+            else if (statuses.includes('yellow')) yellow++;
+            else green++;
         });
 
         const options = {
-            series: [healthCounts.green, healthCounts.yellow, healthCounts.red],
-            labels: ['Otimizado', 'Atenção', 'Crítico'],
+            series: [green, yellow, red],
+            labels: ['Saudável', 'Atenção', 'Crítico'],
             colors: ['#10B981', '#F59E0B', '#EF4444'],
             chart: { type: 'donut', height: 250 },
-            legend: { position: 'bottom' }
+            legend: { position: 'bottom' },
+            dataLabels: { enabled: false },
+            plotOptions: {
+                pie: {
+                    donut: {
+                        size: '65%'
+                    }
+                }
+            }
         };
 
         const chartEl = document.querySelector("#chart-health");

@@ -8,7 +8,10 @@ const config = {
 
     // Outros dados
     appName: 'PMO Hub v15.1 Enterprise',
-    version: '15.1.0'
+    version: '15.1.0',
+
+    // IA Integration
+    geminiApiKey: 'AIzaSyClG7inzT79lOts0kZx-xfpbxfnSMnXEoE'
 };
 
 export default config;

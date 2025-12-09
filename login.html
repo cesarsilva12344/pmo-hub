@@ -126,9 +126,12 @@
 
             document.getElementById('forgotPassword').addEventListener('click', (e) => {
                 e.preventDefault();
+                console.log('Botão Esqueci Senha Clicado');
                 const email = document.getElementById('email').value;
                 if (!email) {
-                    alert("Por favor, digite seu email para redefinir a senha.");
+                    // Visual Shake/Feedback could go here
+                    alert("⚠️ Por favor, digite seu email no campo 'Email Corporativo' e clique novamente em 'Esqueceu a senha?'.");
+                    document.getElementById('email').focus();
                     return;
                 }
                 Auth.resetPassword(email);

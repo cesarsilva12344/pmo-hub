@@ -1,7 +1,7 @@
 const config = {
-    // Suas chaves do Supabase (Corretas)
-    supabaseUrl: 'https://pmrmbddwlwhohjbvkxmf.supabase.co',
-    supabaseAnonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBtcm1iZGR3bHdob2hqYnZreG1mIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQyNjMzNDgsImV4cCI6MjA3OTgzOTM0OH0.Xk5hTWaiLKnJUfUv0ePFINUpwSBSg5qptVmswpMHdng',
+    // Suas chaves do Supabase (Carregadas de secrets.js)
+    supabaseUrl: typeof SECRETS !== 'undefined' ? SECRETS.SUPABASE_URL : '',
+    supabaseAnonKey: typeof SECRETS !== 'undefined' ? SECRETS.SUPABASE_ANON_KEY : '',
 
     // Seu repositório GitHub
     githubRepoUrl: 'https://github.com/cesarsilva12344/pmo-hub.git',
@@ -11,7 +11,11 @@ const config = {
     version: '15.1.0',
 
     // IA Integration
-    geminiApiKey: 'AIzaSyClG7inzT79lOts0kZx-xfpbxfnSMnXEoE'
+    geminiApiKey: typeof SECRETS !== 'undefined' ? SECRETS.GEMINI_API_KEY : ''
 };
+
+if (typeof SECRETS === 'undefined') {
+    console.warn('⚠ SECRETS object not found. Please create js/secrets.js with your API keys.');
+}
 
 export default config;

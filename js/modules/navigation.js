@@ -1,7 +1,7 @@
 
 export const Navigation = {
     init() {
-        const views = ['dashboard', 'risks', 'projects', 'admin', 'financial', 'resources'];
+        const views = ['dashboard', 'risks', 'projects', 'admin', 'financial', 'resources', 'inbox'];
 
         views.forEach(view => {
             const link = document.getElementById(`nav-${view}`);

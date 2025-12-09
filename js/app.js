@@ -13,6 +13,9 @@ import { Calendar } from './components/calendar.js';
 import { FileImporter } from './modules/file-importer.js';
 import { ProjectDetails } from './components/project-details.js';
 import { ProjectsList } from './components/projects-list.js';
+import { ProjectForm } from './components/project-form.js';
+import { PomodoroTimer } from './components/pomodoro.js';
+import { Inbox } from './components/inbox.js';
 
 console.log('PMO Hub v15.1 Modular Loaded');
 
@@ -24,8 +27,11 @@ document.addEventListener('DOMContentLoaded', () => {
     // Init Modules
     Navigation.init();
     FileImporter.init();
-    Admin.init();
     ProjectDetails.init();
+    ProjectForm.init();
+    ProjectsList.init();
+    PomodoroTimer.init();
+    Inbox.init(); // Init GTD Inbox
 
     // Init Logic depends on route, but for now we render things when needed
     // Listen to View Changes to render specific components
@@ -39,7 +45,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         if (view === 'financial') Financial.render();
         if (view === 'resources') Resources.render();
-        if (view === 'admin') Admin.render();
     });
 
     // Subscribe Dashboard to State Changes
@@ -59,13 +64,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // Bindings
-    const btnNew = document.getElementById('btn-new-project');
-    if (btnNew) {
-        btnNew.addEventListener('click', () => {
-            const name = prompt("Nome do Projeto:");
-            if (name) AppState.addProject('traditional', name, 'Demo', 10000);
-        });
-    }
+    // const btnNew = document.getElementById('btn-new-project'); // Moved to ProjectForm
+    // if (btnNew) { ... }
 
     const btnRep = document.getElementById('btn-gen-report');
     if (btnRep) {

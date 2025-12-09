@@ -19,6 +19,8 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/fast-xml-parser/4.3.2/fxp.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
     <!-- Visual Libs -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/frappe-gantt@0.6.1/dist/frappe-gantt.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/frappe-gantt@0.6.1/dist/frappe-gantt.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.2/Sortable.min.js"></script>
     <script src='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.js'></script>
     <script>
@@ -282,6 +284,117 @@
             </div>
         </section>
 
+        <!-- Project Details View (Single Project) -->
+        <section id="view-project-details" class="view-section hidden">
+            <header class="mb-6 flex justify-between items-center bg-white p-6 rounded-xl shadow-sm">
+                <div>
+                    <div class="flex items-center gap-2 mb-1">
+                        <button id="btn-back-projects" class="text-slate-400 hover:text-slate-600">← Voltar</button>
+                        <span class="text-slate-300">|</span>
+                        <span class="text-xs font-bold uppercase text-blue-600 bg-blue-50 px-2 py-0.5 rounded"
+                            id="pd-status">Em Andamento</span>
+                    </div>
+                    <h1 class="text-2xl font-bold text-gray-800" id="pd-title">Nome do Projeto</h1>
+                    <p class="text-sm text-slate-500" id="pd-desc">Descrição do projeto...</p>
+                </div>
+                <div class="flex gap-3">
+                    <button
+                        class="bg-blue-600 text-white px-4 py-2 rounded shadow hover:bg-blue-700 font-medium text-sm"
+                        onclick="ProjectDetails.openNewTaskModal()">+ Nova Tarefa</button>
+                </div>
+            </header>
+
+            <!-- Project Tabs -->
+            <div class="mb-6 border-b border-gray-200">
+                <ul class="flex flex-wrap -mb-px text-sm font-medium text-center">
+                    <li class="me-2">
+                        <button
+                            class="inline-block p-4 border-b-2 rounded-t-lg text-blue-600 border-blue-600 active pd-tab-btn"
+                            data-tab="pd-board">
+                            📋 Quadro Kanban
+                        </button>
+                    </li>
+                    <li class="me-2">
+                        <button
+                            class="inline-block p-4 border-b-2 border-transparent rounded-t-lg hover:text-gray-600 pd-tab-btn"
+                            data-tab="pd-list">
+                            📄 Lista
+                        </button>
+                    </li>
+                    <li class="me-2">
+                        <button
+                            class="inline-block p-4 border-b-2 border-transparent rounded-t-lg hover:text-gray-600 pd-tab-btn"
+                            data-tab="pd-gantt">
+                            📅 Gantt (Beta)
+                        </button>
+                    </li>
+                </ul>
+            </div>
+
+            <!-- Tab Contents -->
+            <div id="pd-board" class="pd-tab-content h-[600px]">
+                <div id="kanban-board-container" class="h-full">
+                    <!-- Kanban Component Renders Here -->
+                </div>
+            </div>
+
+            <div id="pd-list" class="pd-tab-content hidden">
+                <div class="bg-white rounded-xl shadow-sm overflow-hidden">
+                    <table class="w-full text-sm text-left">
+                        <thead class="bg-slate-50 border-b">
+                            <tr>
+                                <th class="py-3 px-4">Tarefa</th>
+                                <th class="py-3 px-4">Prioridade</th>
+                                <th class="py-3 px-4">Status</th>
+                                <th class="py-3 px-4 text-right">Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody id="pd-task-list-body">
+                            <!-- Task List Renders Here -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div id="pd-gantt" class="pd-tab-content hidden">
+                 <div class="flex justify-end mb-2">
+                    <div class="inline-flex rounded-md shadow-sm" role="group">
+                        <button type="button" onclick="GanttChart.changeView('Day')" class="px-4 py-2 text-sm font-medium text-gray-900 bg-white border border-gray-200 rounded-s-lg hover:bg-gray-100 focus:z-10 focus:ring-2 focus:ring-blue-700 focus:text-blue-700">Dia</button>
+                        <button type="button" onclick="GanttChart.changeView('Week')" class="px-4 py-2 text-sm font-medium text-gray-900 bg-white border-t border-b border-gray-200 hover:bg-gray-100 focus:z-10 focus:ring-2 focus:ring-blue-700 focus:text-blue-700">Semana</button>
+                        <button type="button" onclick="GanttChart.changeView('Month')" class="px-4 py-2 text-sm font-medium text-gray-900 bg-white border border-gray-200 rounded-e-lg hover:bg-gray-100 focus:z-10 focus:ring-2 focus:ring-blue-700 focus:text-blue-700">Mês</button>
+                    </div>
+                 </div>
+                 <div id="pd-gantt-chart" class="w-full overflow-x-auto bg-white p-4 rounded-xl shadow-sm min-h-[400px]"></div>
+            </div>
+                                </div>
+                            </div>
+
+                            <!-- Tab Contents -->
+                            <div id="pd-board" class="pd-tab-content h-[600px]">
+                                <div id="kanban-board-container" class="h-full">
+                                    <!-- Kanban Component Renders Here -->
+                                </div>
+                            </div>
+
+                            <div id="pd-list" class="pd-tab-content hidden">
+                                <div class="bg-white rounded-xl shadow-sm overflow-hidden">
+                                    <table class="w-full text-sm text-left">
+                                        <thead class="bg-slate-50 border-b">
+                                            <tr>
+                                                <th class="py-3 px-4">Tarefa</th>
+                                                <th class="py-3 px-4">Prioridade</th>
+                                                <th class="py-3 px-4">Status</th>
+                                                <th class="py-3 px-4 text-right">Ações</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="pd-task-list-body">
+                                            <!-- Task List Renders Here -->
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+        </section>
+
         <!-- Financial View -->
         <section id="view-financial" class="view-section hidden">
             <header class="mb-8">
@@ -317,13 +430,119 @@
         </section>
 
         <!-- Admin View -->
+        <!-- Admin View -->
         <section id="view-admin" class="view-section hidden">
             <header class="mb-8">
                 <h1 class="text-3xl font-bold text-gray-800">Configurações do Sistema</h1>
             </header>
-            <div class="bg-white p-6 rounded-xl shadow-sm">
-                <p class="text-gray-500">Configurações globais, gerenciamento de usuários e
-                    integrações serão implementados na próxima versão.</p>
+
+            <!-- Tabs -->
+            <div class="mb-6 border-b border-gray-200">
+                <ul class="flex flex-wrap -mb-px text-sm font-medium text-center" id="admin-tabs">
+                    <li class="me-2">
+                        <button
+                            class="inline-block p-4 border-b-2 rounded-t-lg hover:text-gray-600 hover:border-gray-300 dark:hover:text-gray-300 admin-tab-btn text-blue-600 border-blue-600 active"
+                            data-tab="admin-global">Global</button>
+                    </li>
+                    <li class="me-2">
+                        <button
+                            class="inline-block p-4 border-b-2 border-transparent rounded-t-lg hover:text-gray-600 hover:border-gray-300 dark:hover:text-gray-300 admin-tab-btn"
+                            data-tab="admin-users">Usuários</button>
+                    </li>
+                    <li class="me-2">
+                        <button
+                            class="inline-block p-4 border-b-2 border-transparent rounded-t-lg hover:text-gray-600 hover:border-gray-300 dark:hover:text-gray-300 admin-tab-btn"
+                            data-tab="admin-integrations">Integrações</button>
+                    </li>
+                </ul>
+            </div>
+
+            <!-- Global Settings -->
+            <div id="admin-global" class="admin-tab-content">
+                <div class="bg-white p-6 rounded-xl shadow-sm max-w-2xl">
+                    <h3 class="text-lg font-bold mb-4">Preferências Gerais</h3>
+                    <form id="form-global-settings" class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Nome da Aplicação</label>
+                            <input type="text" value="PMO Hub Enterprise"
+                                class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-3 border">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Moeda Principal</label>
+                            <select
+                                class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-3 border">
+                                <option>BRL (R$)</option>
+                                <option>USD ($)</option>
+                                <option>EUR (€)</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Tema</label>
+                            <select
+                                class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-3 border">
+                                <option>Claro</option>
+                                <option>Escuro</option>
+                                <option>Sistema</option>
+                            </select>
+                        </div>
+                        <button type="submit"
+                            class="bg-blue-600 text-white px-4 py-2 rounded shadow hover:bg-blue-700">Salvar
+                            Alterações</button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Users Management -->
+            <div id="admin-users" class="admin-tab-content hidden">
+                <div class="bg-white p-6 rounded-xl shadow-sm">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="text-lg font-bold">Usuários Cadastrados</h3>
+                        <button
+                            class="bg-green-600 text-white px-3 py-1.5 rounded shadow hover:bg-green-700 text-sm">Convidar
+                            Usuário</button>
+                    </div>
+                    <table class="w-full text-sm text-left">
+                        <thead class="text-gray-500 border-b">
+                            <tr>
+                                <th class="py-2">Nome</th>
+                                <th class="py-2">Email</th>
+                                <th class="py-2">Função</th>
+                                <th class="py-2">Status</th>
+                                <th class="py-2">Ação</th>
+                            </tr>
+                        </thead>
+                        <tbody id="user-list-admin">
+                            <!-- Mock Data -->
+                            <tr class="border-b">
+                                <td class="py-3">Admin User</td>
+                                <td class="py-3">admin@pmo.com</td>
+                                <td class="py-3"><span
+                                        class="bg-purple-100 text-purple-800 text-xs font-medium mr-2 px-2.5 py-0.5 rounded">Admin</span>
+                                </td>
+                                <td class="py-3"><span class="text-green-600">Ativo</span></td>
+                                <td class="py-3"><button class="text-red-600 hover:underline">Remover</button></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Integrations -->
+            <div id="admin-integrations" class="admin-tab-content hidden">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="bg-white p-6 rounded-xl shadow-sm border border-l-4 border-l-green-500">
+                        <h3 class="font-bold text-lg mb-2">Supabase Database</h3>
+                        <p class="text-sm text-gray-600 mb-4">Conectado para persistência de dados e autenticação.</p>
+                        <div class="flex items-center gap-2 text-green-600 text-sm font-bold">
+                            <span class="w-2 h-2 bg-green-500 rounded-full"></span> Online
+                        </div>
+                    </div>
+                    <div class="bg-white p-6 rounded-xl shadow-sm border border-l-4 border-l-blue-500">
+                        <h3 class="font-bold text-lg mb-2">OpenAI / Gemini</h3>
+                        <p class="text-sm text-gray-600 mb-4">Geração de insights e análise de riscos.</p>
+                        <button class="text-blue-600 text-sm font-medium hover:underline">Configurar Chave API</button>
+                    </div>
+                </div>
             </div>
         </section>
     </main>

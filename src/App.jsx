@@ -23,7 +23,7 @@ export default function App() {
     return (
         <AuthProvider>
             {/* Main Router Configuration */}
-            <Router>
+            <Router basename="/pmo-hub">
                 <Routes>
                     <Route path="/login" element={<Login />} />
 

@@ -1,0 +1,32 @@
+@import "tailwindcss";
+
+/* 
+  Theme configuration is now handled in tailwind.config.js
+  Global styles are applied in index.html classes.
+*/
+
+/* CMDK Styles */
+[cmdk-root] {
+  max-width: 640px;
+  width: 100%;
+  background: white;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.1);
+}
+
+[cmdk-overlay] {
+  background: rgba(0, 0, 0, 0.2);
+  backdrop-filter: blur(2px);
+  position: fixed;
+  inset: 0;
+  z-index: 9998;
+}
+
+[cmdk-dialog] {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 9999;
+}

@@ -32,7 +32,7 @@ async function listModels() {
                 console.log(`SUCCESS: ${modelName} works.`);
                 break; // Stop after first success
             } catch (error) {
-                console.log(`FAILED: ${modelName} - ${error.message}`);
+                console.log(`FAILED: ${modelName} - ${error.message} `);
             }
         }
     } catch (error) {

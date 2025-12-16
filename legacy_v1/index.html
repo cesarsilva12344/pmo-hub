@@ -1,0 +1,969 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - PMO Hub v15.1</title>
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#1e293b">
+    <link rel="apple-touch-icon" href="https://via.placeholder.com/192x192.png?text=PMO">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+    <!-- Supabase CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <!-- File Parsing Libs -->
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/fast-xml-parser/4.3.2/fxp.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <!-- Visual Libs -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/frappe-gantt@0.6.1/dist/frappe-gantt.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/frappe-gantt@0.6.1/dist/frappe-gantt.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.2/Sortable.min.js"></script>
+    <script src='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.js'></script>
+    <script>
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+        // PWA Register
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js')
+                    .then(reg => console.log('SW Registered!', reg.scope))
+                    .catch(err => console.log('SW Fail:', err));
+            });
+        }
+    </script>
+    <script src="js/secrets.js"></script>
+    <script type="module" src="js/app.js"></script>
+</head>
+
+<body class="bg-slate-100 font-inter flex h-screen overflow-hidden">
+    <!-- Sidebar -->
+    <aside class="w-64 bg-slate-900 text-white flex flex-col shadow-xl z-20">
+        <div class="p-6">
+            <h1 class="text-2xl font-bold bg-gradient-to-r from-blue-400 to-teal-400 bg-clip-text text-transparent">
+                PMO Hub
+            </h1>
+            <p class="text-xs text-slate-400 mt-1">Enterprise v15.1</p>
+        </div>
+
+        <nav class="flex-1 px-4 space-y-2">
+            <a href="#" id="nav-inbox"
+                class="flex items-center gap-3 px-4 py-3 rounded-lg text-slate-300 hover:bg-slate-800 hover:text-white transition-all">
+                <span>📥</span> Caixa de Entrada (GTD)
+            </a>
+            <a href="#" id="nav-dashboard"
+                class="flex items-center gap-3 px-4 py-3 rounded-lg bg-slate-800 text-white shadow-sm transition-all">
+                <span>📊</span> Visão Geral
+            </a>
+            <a href="#" id="nav-projects"
+                class="flex items-center gap-3 px-4 py-3 rounded-lg text-slate-300 hover:bg-slate-800 hover:text-white transition-all">
+                <span>🚀</span> Projetos
+            </a>
+            <a href="#" id="nav-risks"
+                class="flex items-center gap-3 px-4 py-3 rounded-lg text-slate-300 hover:bg-slate-800 hover:text-white transition-all">
+                <span>⚠️</span> Riscos
+            </a>
+            <a href="#" id="nav-financial"
+                class="flex items-center gap-3 px-4 py-3 rounded-lg text-slate-300 hover:bg-slate-800 hover:text-white transition-all">
+                <span>💰</span> Financeiro
+            </a>
+            <a href="#" id="nav-resources"
+                class="flex items-center gap-3 px-4 py-3 rounded-lg text-slate-300 hover:bg-slate-800 hover:text-white transition-all">
+                <span>👥</span> Recursos
+            </a>
+            <div class="pt-4 border-t border-slate-700 mt-4">
+                <a href="#" id="nav-admin"
+                    class="flex items-center gap-3 px-4 py-3 rounded-lg text-slate-300 hover:bg-slate-800 hover:text-white transition-all">
+                    <span>⚙️</span> Configurações
+                </a>
+            </div>
+        </nav>
+
+        <div class="p-4 border-t border-slate-700">
+            <button id="logoutBtn"
+                class="flex items-center gap-2 text-sm text-slate-400 hover:text-white transition-colors w-full">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                </svg>
+                Encerrar Sessão
+            </button>
+        </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="flex-1 overflow-auto p-8 relative">
+        <!-- Inbox View (GTD) -->
+        <section id="view-inbox" class="view-section hidden">
+            <header class="flex justify-between items-center mb-8">
+                <h1 class="text-3xl font-bold text-gray-800">Caixa de Entrada (GTD)</h1>
+                <button id="btn-inbox-process"
+                    class="bg-green-600 text-white px-4 py-2 rounded shadow hover:bg-green-700">Processar Items</button>
+            </header>
+
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                <!-- Capture Area -->
+                <div class="lg:col-span-1 space-y-6">
+                    <div class="bg-white p-6 rounded-xl shadow-sm border-t-4 border-blue-500">
+                        <h3 class="font-bold text-lg mb-4 text-slate-700">Captura Rápida</h3>
+                        <p class="text-sm text-slate-500 mb-4">Esvazie sua mente. O que precisa ser feito?</p>
+                        <form id="form-inbox-capture">
+                            <textarea id="inbox-input" rows="4"
+                                class="w-full border rounded-lg p-3 focus:ring-2 focus:ring-blue-500 outline-none mb-3"
+                                placeholder="Ex: Comprar licença do software..."></textarea>
+                            <button type="submit"
+                                class="w-full bg-blue-600 text-white py-2 rounded font-bold hover:bg-blue-700">Capturar
+                                ↵</button>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Inbox List -->
+                <div class="lg:col-span-2">
+                    <div class="bg-white rounded-xl shadow-sm overflow-hidden">
+                        <div class="p-4 border-b border-gray-100 flex justify-between items-center bg-gray-50">
+                            <h3 class="font-bold text-slate-700">Itens Não Processados</h3>
+                            <span id="inbox-count"
+                                class="bg-red-100 text-red-600 text-xs font-bold px-2 py-1 rounded-full">0</span>
+                        </div>
+                        <ul id="inbox-list" class="divide-y divide-gray-100">
+                            <!-- JS Generated Items -->
+                            <li class="p-8 text-center text-slate-400 italic">Sua caixa de entrada está vazia. Parabéns!
+                                🎉</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Dashboard View -->
+        <section id="view-dashboard" class="view-section active">
+            <header class="flex justify-between items-center mb-8">
+                <h1 class="text-3xl font-bold text-gray-800">Visão Geral do Portfólio</h1>
+                <div class="flex gap-4">
+                    <button id="btn-import-project"
+                        class="bg-white border border-slate-300 text-slate-700 px-4 py-2 rounded shadow-sm hover:bg-slate-50 flex items-center gap-2">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                        </svg>
+                        Importar
+                    </button>
+                    <button id="btn-new-project"
+                        class="bg-blue-600 text-white px-4 py-2 rounded shadow hover:bg-blue-700">+
+                        Novo
+                        Projeto</button>
+                </div>
+            </header>
+
+            <!-- Import Modal -->
+            <div id="import-modal"
+                class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-50">
+                <div class="bg-white rounded-xl shadow-2xl w-full max-w-lg p-6">
+                    <div class="flex justify-between items-center mb-6">
+                        <h3 class="text-xl font-bold text-slate-800">Importar Arquivo</h3>
+                        <button id="btn-close-import" class="text-slate-400 hover:text-slate-600">✕</button>
+                    </div>
+
+                    <div class="border-2 border-dashed border-slate-300 rounded-lg p-8 text-center hover:bg-slate-50 transition-colors"
+                        id="drop-zone">
+                        <input type="file" id="file-input" class="hidden" accept=".xlsx,.xml,.pdf">
+                        <svg class="w-12 h-12 text-slate-400 mx-auto mb-4" fill="none" stroke="currentColor"
+                            viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                        </svg>
+                        <p class="text-slate-600 font-medium mb-1">Arraste e solte ou clique para selecionar</p>
+                        <p class="text-xs text-slate-400">Suporta: Excel (.xlsx), MS Project (.xml), PDF (.pdf)</p>
+                    </div>
+
+                    <div id="import-preview" class="hidden mt-6 bg-slate-50 p-4 rounded border border-slate-200">
+                        <div class="flex items-center gap-3 mb-2">
+                            <span class="text-2xl" id="file-icon">📄</span>
+                            <div>
+                                <p class="font-bold text-sm text-slate-700" id="file-name">projeto.xlsx</p>
+                                <p class="text-xs text-slate-500" id="file-size">120kb</p>
+                            </div>
+                        </div>
+                        <button id="btn-process-import"
+                            class="w-full bg-blue-600 text-white py-2 rounded font-bold hover:bg-blue-700 mt-2">
+                            Processar Importação
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- NEW PROJECT MODAL -->
+            <div id="new-project-modal"
+                class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-50 overflow-y-auto pt-10 pb-10">
+                <div class="bg-white rounded-xl shadow-2xl w-full max-w-4xl flex flex-col max-h-full">
+                    <!-- Header -->
+                    <div class="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50 rounded-t-xl">
+                        <div>
+                            <h3 class="text-xl font-bold text-slate-800">Novo Projeto</h3>
+                            <p class="text-sm text-slate-500">Preencha os dados completos para iniciar o planejamento.
+                            </p>
+                        </div>
+                        <button id="btn-close-new-project"
+                            class="text-slate-400 hover:text-slate-600 transition-colors">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                        </button>
+                    </div>
+
+                    <!-- WIZARD STEP 1: GOVERNANCE TRACK -->
+                    <div id="np-step-1" class="p-8 flex-1 overflow-y-auto">
+                        <h4 class="text-center text-lg font-bold text-slate-700 mb-8">Selecione a Trilha de Governança
+                        </h4>
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                            <!-- Track 1: Traditional -->
+                            <div class="np-track-card cursor-pointer border-2 border-slate-200 rounded-xl p-6 hover:border-blue-500 hover:shadow-lg transition-all group"
+                                data-track="traditional">
+                                <div
+                                    class="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mb-4 text-2xl group-hover:scale-110 transition-transform">
+                                    🏢</div>
+                                <h5 class="font-bold text-slate-800 mb-2">Tradicional / Preditivo</h5>
+                                <p class="text-xs text-slate-500 mb-4">Para projetos complexos, engenharia ou contratos
+                                    fixos. Exige rigor no planejamento e controle.</p>
+                                <ul class="text-xs text-slate-600 space-y-1 list-disc pl-4">
+                                    <li>Ciclo de Vida em Fases</li>
+                                    <li>Gantt & Caminho Crítico</li>
+                                    <li>Quality Gates (PDD)</li>
+                                </ul>
+                            </div>
+
+                            <!-- Track 2: Agile -->
+                            <div class="np-track-card cursor-pointer border-2 border-slate-200 rounded-xl p-6 hover:border-purple-500 hover:shadow-lg transition-all group"
+                                data-track="agile">
+                                <div
+                                    class="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center mb-4 text-2xl group-hover:scale-110 transition-transform">
+                                    🚀</div>
+                                <h5 class="font-bold text-slate-800 mb-2">Ágil / Adaptativo</h5>
+                                <p class="text-xs text-slate-500 mb-4">Para desenvolvimento de software e inovação. Foco
+                                    em entregas contínuas e adaptação.</p>
+                                <ul class="text-xs text-slate-600 space-y-1 list-disc pl-4">
+                                    <li>Sprints & Backlog</li>
+                                    <li>Kanban Avançado</li>
+                                    <li>Wiki do Produto</li>
+                                </ul>
+                            </div>
+
+                            <!-- Track 3: Quick Win -->
+                            <div class="np-track-card cursor-pointer border-2 border-slate-200 rounded-xl p-6 hover:border-green-500 hover:shadow-lg transition-all group"
+                                data-track="quick">
+                                <div
+                                    class="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mb-4 text-2xl group-hover:scale-110 transition-transform">
+                                    ⚡</div>
+                                <h5 class="font-bold text-slate-800 mb-2">Quick Win / Fast Track</h5>
+                                <p class="text-xs text-slate-500 mb-4">Para demandas de tiro curto e baixo risco. Mínima
+                                    burocracia.</p>
+                                <ul class="text-xs text-slate-600 space-y-1 list-disc pl-4">
+                                    <li>Sem Gantt Complexo</li>
+                                    <li>Matriz RACI Simplificada</li>
+                                    <li>Updates via E-mail</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- WIZARD STEP 2: DETAILS FORM -->
+                    <div id="np-step-2" class="hidden flex-col max-h-full">
+                        <!-- Tabs Header -->
+                        <div class="flex border-b border-gray-200 px-6">
+                            <button
+                                class="px-4 py-3 text-sm font-medium text-blue-600 border-b-2 border-blue-600 focus:outline-none"
+                                data-tab="np-general">1. Identificação</button>
+                            <button
+                                class="px-4 py-3 text-sm font-medium text-gray-500 hover:text-gray-700 focus:outline-none"
+                                data-tab="np-class">2. Classificação</button>
+                            <button
+                                class="px-4 py-3 text-sm font-medium text-gray-500 hover:text-gray-700 focus:outline-none"
+                                data-tab="np-metrics">3. Faróis & Prazos</button>
+                        </div>
+
+                        <!-- Form Body -->
+                        <div class="p-8 overflow-y-auto custom-scrollbar">
+                            <form id="form-new-project" class="space-y-6">
+
+                                <!-- TAB 1: IDENTIFICATION & GENERAL -->
+                                <div id="np-general" class="tab-section space-y-6">
+                                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                        <div>
+                                            <label class="block text-sm font-semibold text-slate-700 mb-1">Nome do
+                                                Projeto
+                                                <span class="text-red-500">*</span></label>
+                                            <input type="text" id="np-name" required
+                                                class="w-full px-4 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+                                                placeholder="Ex: Migração Cloud V2">
+                                        </div>
+                                        <div>
+                                            <label class="block text-sm font-semibold text-slate-700 mb-1">PEP /
+                                                Código</label>
+                                            <input type="text" id="np-pep"
+                                                class="w-full px-4 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 outline-none"
+                                                placeholder="Ex: P-2024-001">
+                                        </div>
+                                        <div>
+                                            <label class="block text-sm font-semibold text-slate-700 mb-1">Gerente
+                                                Responsável</label>
+                                            <input type="text" id="np-manager"
+                                                class="w-full px-4 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 outline-none"
+                                                placeholder="Nome do GP">
+                                        </div>
+                                        <div class="flex items-end pb-2">
+                                            <label class="flex items-center gap-3 cursor-pointer">
+                                                <input type="checkbox" id="np-lei-bem"
+                                                    class="w-5 h-5 text-blue-600 rounded focus:ring-blue-500 border-gray-300">
+                                                <span class="text-slate-700 font-medium">Aplicável Lei do Bem? ⚖️</span>
+                                            </label>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-semibold text-slate-700 mb-1">Descrição</label>
+                                        <textarea id="np-desc" rows="3"
+                                            class="w-full px-4 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 outline-none resize-none"></textarea>
+                                    </div>
+                                </div>
+
+                                <!-- TAB 2: CLASSIFICATION (Smart Selects) -->
+                                <div id="np-class" class="tab-section hidden space-y-6">
+                                    <div class="bg-blue-50 border border-blue-100 rounded-lg p-4 mb-4">
+                                        <p class="text-sm text-blue-800 flex items-center gap-2">
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                    d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z">
+                                                </path>
+                                            </svg>
+                                            Dica: Digite um novo valor para cadastrá-lo automaticamente.
+                                        </p>
+                                    </div>
+
+                                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                        <!-- Cliente -->
+                                        <div class="relative group">
+                                            <label
+                                                class="block text-sm font-semibold text-slate-700 mb-1">Cliente</label>
+                                            <input type="text" id="np-client" list="list-clients"
+                                                class="w-full px-4 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 outline-none"
+                                                placeholder="Selecione ou digite..">
+                                            <datalist id="list-clients">
+                                                <!-- Hydrated by JS -->
+                                            </datalist>
+                                        </div>
+
+                                        <!-- Produto -->
+                                        <div>
+                                            <label
+                                                class="block text-sm font-semibold text-slate-700 mb-1">Produto</label>
+                                            <input type="text" id="np-product" list="list-products"
+                                                class="w-full px-4 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 outline-none"
+                                                placeholder="Selecione ou digite..">
+                                            <datalist id="list-products">
+                                                <!-- Hydrated by JS -->
+                                            </datalist>
+                                        </div>
+
+                                        <!-- Categoria -->
+                                        <div>
+                                            <label
+                                                class="block text-sm font-semibold text-slate-700 mb-1">Categoria</label>
+                                            <input type="text" id="np-category" list="list-categories"
+                                                class="w-full px-4 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 outline-none"
+                                                placeholder="Selecione ou digite..">
+                                            <datalist id="list-categories">
+                                                <!-- Hydrated by JS -->
+                                            </datalist>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- TAB 3: METRICS & DATES -->
+                                <div id="np-metrics" class="tab-section hidden space-y-8">
+                                    <!-- Faróis -->
+                                    <div>
+                                        <h4
+                                            class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4 border-b pb-2">
+                                            Status Inicial (Faróis)</h4>
+                                        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                            <div>
+                                                <label class="block text-sm font-semibold text-slate-700 mb-1">Farol
+                                                    Escopo</label>
+                                                <select id="np-scope"
+                                                    class="w-full px-3 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 outline-none">
+                                                    <option value="dentro">🟢 Dentro do Escopo</option>
+                                                    <option value="fora_cliente">🟡 Fora (Motivo Cliente)</option>
+                                                    <option value="fora_empresa">🔴 Fora (Motivo Empresa)</option>
+                                                </select>
+                                            </div>
+                                            <div>
+                                                <label class="block text-sm font-semibold text-slate-700 mb-1">Farol
+                                                    Custo</label>
+                                                <select id="np-cost"
+                                                    class="w-full px-3 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 outline-none">
+                                                    <option value="verde">🟢 No Orçamento</option>
+                                                    <option value="amarelo">🟡 Alerta</option>
+                                                    <option value="vermelho">🔴 Estourado</option>
+                                                </select>
+                                            </div>
+                                            <div>
+                                                <label class="block text-sm font-semibold text-slate-700 mb-1">Farol
+                                                    Prazo</label>
+                                                <select id="np-time"
+                                                    class="w-full px-3 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 outline-none">
+                                                    <option value="verde">🟢 No Prazo</option>
+                                                    <option value="amarelo">🟡 Risco de Atraso</option>
+                                                    <option value="vermelho">🔴 Atrasado</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Cronograma Grid -->
+                                    <div>
+                                        <h4
+                                            class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4 border-b pb-2">
+                                            Cronograma (Estimado vs Real)</h4>
+                                        <div class="overflow-x-auto">
+                                            <table class="w-full text-sm text-left">
+                                                <thead class="text-gray-500 bg-gray-50">
+                                                    <tr>
+                                                        <th class="px-2 py-2">Marco</th>
+                                                        <th class="px-2 py-2">Data Estimada</th>
+                                                        <th class="px-2 py-2">Data Real</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody class="divide-y divide-gray-100">
+                                                    <tr>
+                                                        <td class="px-2 py-3 font-medium">Início</td>
+                                                        <td class="px-2"><input type="date" id="np-start-est"
+                                                                class="w-full p-1 border rounded text-xs "></td>
+                                                        <td class="px-2"><input type="date" id="np-start-real"
+                                                                class="w-full p-1 border rounded text-xs bg-gray-50">
+                                                        </td>
+                                                    </tr>
+                                                    <tr>
+                                                        <td class="px-2 py-3 font-medium">Go! Live</td>
+                                                        <td class="px-2"><input type="date" id="np-go-est"
+                                                                class="w-full p-1 border rounded text-xs"></td>
+                                                        <td class="px-2"><input type="date" id="np-go-real"
+                                                                class="w-full p-1 border rounded text-xs bg-gray-50">
+                                                        </td>
+                                                    </tr>
+                                                    <tr>
+                                                        <td class="px-2 py-3 font-medium">Término</td>
+                                                        <td class="px-2"><input type="date" id="np-end-est"
+                                                                class="w-full p-1 border rounded text-xs"></td>
+                                                        <td class="px-2"><input type="date" id="np-end-real"
+                                                                class="w-full p-1 border rounded text-xs bg-gray-50">
+                                                        </td>
+                                                    </tr>
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+
+                                    <!-- Horas -->
+                                    <div class="grid grid-cols-2 gap-6 pt-4 border-t border-gray-100">
+                                        <div>
+                                            <label class="block text-sm font-semibold text-slate-700 mb-1">Horas
+                                                Estimadas</label>
+                                            <input type="number" id="np-hours-est"
+                                                class="w-full px-4 py-2 rounded-lg border border-slate-300"
+                                                placeholder="0">
+                                        </div>
+                                        <div>
+                                            <label class="block text-sm font-semibold text-slate-700 mb-1">Horas
+                                                Apontadas</label>
+                                            <input type="number" id="np-hours-real"
+                                                class="w-full px-4 py-2 rounded-lg border border-slate-300 bg-gray-50"
+                                                placeholder="0" readonly>
+                                        </div>
+                                    </div>
+                                </div>
+                            </form>
+                        </div>
+
+                        <!-- Footer Buttons -->
+                        <div class="p-6 border-t border-gray-100 flex justify-end gap-3 bg-gray-50 rounded-b-xl">
+                            <button id="btn-back-step-1"
+                                class="px-6 py-2 rounded-lg text-slate-600 font-medium hover:bg-white hover:shadow-sm transition-all border border-transparent hover:border-gray-200">Voltar</button>
+                            <button id="btn-save-new-project"
+                                class="px-6 py-2 rounded-lg bg-blue-600 text-white font-bold hover:bg-blue-700 shadow-md transform active:scale-95 transition-all">Salvar
+                                Projeto</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Stats Grid -->
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+                <div class="bg-white p-6 rounded-xl shadow-sm">
+                    <h3 class="text-sm text-gray-500 mb-1">Total de Projetos</h3>
+                    <p class="text-2xl font-bold" id="kpi-total-projects">-</p>
+                </div>
+                <div class="bg-white p-6 rounded-xl shadow-sm">
+                    <h3 class="text-sm text-gray-500 mb-1">Em Risco</h3>
+                    <p class="text-2xl font-bold text-red-500" id="kpi-risk-projects">-</p>
+                </div>
+                <div class="bg-white p-6 rounded-xl shadow-sm">
+                    <h3 class="text-sm text-gray-500 mb-1">Concluídos (YTD)</h3>
+                    <p class="text-2xl font-bold text-green-500">8</p>
+                </div>
+                <div class="bg-white p-6 rounded-xl shadow-sm">
+                    <h3 class="text-sm text-gray-500 mb-1">Orçamento Executado</h3>
+                    <p class="text-2xl font-bold" id="kpi-budget">-</p>
+                </div>
+            </div>
+
+            <!-- Charts Section -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div class="bg-white p-6 rounded-xl shadow-sm">
+                    <h3 class="font-bold mb-4">Investimento por Cliente</h3>
+                    <div id="chart-investment" class="h-64 bg-gray-50 flex items-center justify-center">Gráfico
+                        Carregando...</div>
+                </div>
+                <div class="bg-white p-6 rounded-xl shadow-sm">
+                    <h3 class="font-bold mb-4">Saúde dos Projetos</h3>
+                    <div id="chart-health" class="h-64 bg-gray-50 flex items-center justify-center">Gráfico
+                        Carregando...</div>
+                </div>
+                <!-- Status Reports -->
+                <div class="mt-8 bg-white p-6 rounded-xl shadow-sm">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="font-bold">Últimos Status Reports (Gerados Automaticamente)</h3>
+                        <button id="btn-gen-report"
+                            class="text-sm bg-gray-100 hover:bg-gray-200 px-3 py-1 rounded border">Simular Geração
+                            Manual</button>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-sm text-left">
+                            <thead class="text-gray-500 border-b">
+                                <tr>
+                                    <th class="py-2">Data</th>
+                                    <th class="py-2">Projeto</th>
+                                    <th class="py-2">Saúde</th>
+                                    <th class="py-2">Autor</th>
+                                    <th class="py-2">Ação</th>
+                                </tr>
+                            </thead>
+                            <tbody id="report-list">
+                                <!-- Populated by JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+        </section>
+
+        <!-- Risks View -->
+        <section id="view-risks" class="view-section hidden">
+            <header class="mb-8">
+                <h1 class="text-3xl font-bold text-gray-800">Matriz de Riscos</h1>
+            </header>
+            <div class="flex gap-8 overflow-x-auto">
+                <!-- Matrix -->
+                <div class="bg-white p-6 rounded-xl shadow-sm">
+                    <h3 class="font-bold mb-4 text-center">Matriz Probabilidade x Impacto
+                    </h3>
+                    <div class="relative">
+                        <!-- Y Axis Label -->
+                        <div class="absolute -left-8 top-1/2 -rotate-90 text-sm font-bold text-gray-500">
+                            Probabilidade
+                        </div>
+                        <!-- X Axis Label -->
+                        <div class="absolute -bottom-8 left-1/2 -translate-x-1/2 text-sm font-bold text-gray-500">
+                            Impacto</div>
+
+                        <div id="risk-matrix" class="risk-matrix border-2 border-slate-300">
+                            <!-- Matrix Cells generated by JS -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Risk List -->
+                <div class="flex-1 bg-white p-6 rounded-xl shadow-sm">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="font-bold">Riscos Críticos</h3>
+                        <button class="text-sm text-blue-600 hover:underline">+ Novo
+                            Risco</button>
+                    </div>
+                    <div id="risk-list" class="space-y-2">
+                        <!-- Risk Items -->
+                        <p class="text-gray-500 text-sm">Nenhum risco crítico identificado.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Pipeline View -->
+        <section id="view-projects" class="view-section hidden">
+            <header class="flex justify-between items-center mb-8">
+                <h1 class="text-3xl font-bold text-gray-800">Pipeline & Cronograma</h1>
+                <div class="flex gap-4">
+                    <select id="project-group-filter"
+                        class="bg-white border border-slate-300 text-slate-700 px-3 py-2 rounded shadow-sm hover:bg-slate-50 outline-none">
+                        <option value="status">Agrupar por: Status (Pipeline)</option>
+                        <option value="client">Agrupar por: Cliente</option>
+                        <option value="manager">Agrupar por: Gerente</option>
+                    </select>
+                    <button class="bg-blue-600 text-white px-4 py-2 rounded shadow hover:bg-blue-700"
+                        onclick="document.getElementById('btn-new-project').click()">+ Novo Projeto</button>
+                </div>
+            </header>
+
+            <!-- Calendar Section -->
+            <div class="mb-8 bg-white p-6 rounded-xl shadow-sm">
+                <h3 class="font-bold mb-4 text-slate-600">Calendário de Entregas</h3>
+                <div id="calendar-container"></div>
+            </div>
+
+            <div id="projects-view-container" class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <!-- Dynamic Content will be rendered here by ProjectsList.js -->
+            </div>
+
+            <!-- Hidden Templates for Legacy Support if needed, or we just generate everything in JS -->
+            <div id="legacy-cols" class="hidden">
+                <div id="col-ideia"></div>
+                <div id="col-analise"></div>
+                <div id="col-aprovado"></div>
+            </div>
+        </section>
+
+        <!-- Project Details View (Single Project) -->
+        <section id="view-project-details" class="view-section hidden">
+            <header class="mb-6 flex justify-between items-center bg-white p-6 rounded-xl shadow-sm">
+                <div>
+                    <div class="flex items-center gap-2 mb-1">
+                        <button id="btn-back-projects" class="text-slate-400 hover:text-slate-600">← Voltar</button>
+                        <span class="text-slate-300">|</span>
+                        <span class="text-xs font-bold uppercase text-blue-600 bg-blue-50 px-2 py-0.5 rounded"
+                            id="pd-status">Em Andamento</span>
+                    </div>
+                    <h1 class="text-2xl font-bold text-gray-800" id="pd-title">Nome do Projeto</h1>
+                    <p class="text-sm text-slate-500" id="pd-desc">Descrição do projeto...</p>
+                </div>
+                <div class="flex gap-3">
+                    <button
+                        class="bg-blue-600 text-white px-4 py-2 rounded shadow hover:bg-blue-700 font-medium text-sm"
+                        onclick="ProjectDetails.openNewTaskModal()">+ Nova Tarefa</button>
+                </div>
+            </header>
+
+            <!-- Project Tabs -->
+            <div class="mb-6 border-b border-gray-200">
+                <ul class="flex flex-wrap -mb-px text-sm font-medium text-center">
+                    <li class="me-2">
+                        <button
+                            class="inline-block p-4 border-b-2 rounded-t-lg text-blue-600 border-blue-600 active pd-tab-btn"
+                            data-tab="pd-board">
+                            📋 Quadro Kanban
+                        </button>
+                    </li>
+                    <li class="me-2">
+                        <button
+                            class="inline-block p-4 border-b-2 border-transparent rounded-t-lg hover:text-gray-600 pd-tab-btn"
+                            data-tab="pd-list">
+                            📄 Lista
+                        </button>
+                    </li>
+                    <li class="me-2">
+                        <button
+                            class="inline-block p-4 border-b-2 border-transparent rounded-t-lg hover:text-gray-600 pd-tab-btn"
+                            data-tab="pd-gantt">
+                            📅 Gantt (Beta)
+                        </button>
+                    </li>
+                </ul>
+            </div>
+
+            <!-- Tab Contents -->
+            <div id="pd-board" class="pd-tab-content h-[600px]">
+                <div id="kanban-board-container" class="h-full">
+                    <!-- Kanban Component Renders Here -->
+                </div>
+            </div>
+
+            <div id="pd-list" class="pd-tab-content hidden">
+                <div class="bg-white rounded-xl shadow-sm overflow-hidden">
+                    <table class="w-full text-sm text-left">
+                        <thead class="bg-slate-50 border-b">
+                            <tr>
+                                <th class="py-3 px-4">Tarefa</th>
+                                <th class="py-3 px-4">Prioridade</th>
+                                <th class="py-3 px-4">Status</th>
+                                <th class="py-3 px-4 text-right">Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody id="pd-task-list-body">
+                            <!-- Task List Renders Here -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div id="pd-gantt" class="pd-tab-content hidden">
+                <div class="flex justify-end mb-2">
+                    <div class="inline-flex rounded-md shadow-sm" role="group">
+                        <button type="button" onclick="GanttChart.changeView('Day')"
+                            class="px-4 py-2 text-sm font-medium text-gray-900 bg-white border border-gray-200 rounded-s-lg hover:bg-gray-100 focus:z-10 focus:ring-2 focus:ring-blue-700 focus:text-blue-700">Dia</button>
+                        <button type="button" onclick="GanttChart.changeView('Week')"
+                            class="px-4 py-2 text-sm font-medium text-gray-900 bg-white border-t border-b border-gray-200 hover:bg-gray-100 focus:z-10 focus:ring-2 focus:ring-blue-700 focus:text-blue-700">Semana</button>
+                        <button type="button" onclick="GanttChart.changeView('Month')"
+                            class="px-4 py-2 text-sm font-medium text-gray-900 bg-white border border-gray-200 rounded-e-lg hover:bg-gray-100 focus:z-10 focus:ring-2 focus:ring-blue-700 focus:text-blue-700">Mês</button>
+                    </div>
+                </div>
+                <div id="pd-gantt-chart" class="w-full overflow-x-auto bg-white p-4 rounded-xl shadow-sm min-h-[400px]">
+                </div>
+            </div>
+            </div>
+            </div>
+
+            <!-- Tab Contents -->
+            <div id="pd-board" class="pd-tab-content h-[600px]">
+                <div id="kanban-board-container" class="h-full">
+                    <!-- Kanban Component Renders Here -->
+                </div>
+            </div>
+
+            <div id="pd-list" class="pd-tab-content hidden">
+                <div class="bg-white rounded-xl shadow-sm overflow-hidden">
+                    <table class="w-full text-sm text-left">
+                        <thead class="bg-slate-50 border-b">
+                            <tr>
+                                <th class="py-3 px-4">Tarefa</th>
+                                <th class="py-3 px-4">Prioridade</th>
+                                <th class="py-3 px-4">Status</th>
+                                <th class="py-3 px-4 text-right">Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody id="pd-task-list-body">
+                            <!-- Task List Renders Here -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- Financial View -->
+        <section id="view-financial" class="view-section hidden">
+            <header class="mb-8">
+                <h1 class="text-3xl font-bold text-gray-800">Controle Financeiro</h1>
+            </header>
+            <div class="bg-white p-6 rounded-xl shadow-sm overflow-x-auto">
+                <table class="w-full text-sm text-left">
+                    <thead class="text-gray-500 border-b bg-gray-50">
+                        <tr>
+                            <th class="py-3 px-2">Projeto</th>
+                            <th class="py-3 px-2">Orçamento</th>
+                            <th class="py-3 px-2">Realizado</th>
+                            <th class="py-3 px-2">Previsto (EAC)</th>
+                            <th class="py-3 px-2">Status</th>
+                            <th class="py-3 px-2">Análise IA</th>
+                        </tr>
+                    </thead>
+                    <tbody id="financial-list">
+                        <!-- JS Generated -->
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- Resources View -->
+        <section id="view-resources" class="view-section hidden">
+            <header class="mb-8">
+                <h1 class="text-3xl font-bold text-gray-800">Alocação de Recursos</h1>
+            </header>
+            <div id="resource-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <!-- JS Generated -->
+            </div>
+        </section>
+
+        <!-- Admin View -->
+        <!-- Admin View -->
+        <section id="view-admin" class="view-section hidden">
+            <header class="mb-8">
+                <h1 class="text-3xl font-bold text-gray-800">Configurações do Sistema</h1>
+            </header>
+
+            <!-- Tabs -->
+            <div class="mb-6 border-b border-gray-200">
+                <ul class="flex flex-wrap -mb-px text-sm font-medium text-center" id="admin-tabs">
+                    <li class="me-2">
+                        <button
+                            class="inline-block p-4 border-b-2 rounded-t-lg hover:text-gray-600 hover:border-gray-300 dark:hover:text-gray-300 admin-tab-btn text-blue-600 border-blue-600 active"
+                            data-tab="admin-global">Global</button>
+                    </li>
+                    <li class="me-2">
+                        <button
+                            class="inline-block p-4 border-b-2 border-transparent rounded-t-lg hover:text-gray-600 hover:border-gray-300 dark:hover:text-gray-300 admin-tab-btn"
+                            data-tab="admin-users">Usuários</button>
+                    </li>
+                    <li class="me-2">
+                        <button
+                            class="inline-block p-4 border-b-2 border-transparent rounded-t-lg hover:text-gray-600 hover:border-gray-300 dark:hover:text-gray-300 admin-tab-btn"
+                            data-tab="admin-integrations">Integrações</button>
+                    </li>
+                </ul>
+            </div>
+
+            <!-- Global Settings -->
+            <div id="admin-global" class="admin-tab-content">
+                <div class="bg-white p-6 rounded-xl shadow-sm max-w-2xl">
+                    <h3 class="text-lg font-bold mb-4">Preferências Gerais</h3>
+                    <form id="form-global-settings" class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Nome da Aplicação</label>
+                            <input type="text" value="PMO Hub Enterprise"
+                                class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-3 border">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Moeda Principal</label>
+                            <select
+                                class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-3 border">
+                                <option>BRL (R$)</option>
+                                <option>USD ($)</option>
+                                <option>EUR (€)</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Tema</label>
+                            <select
+                                class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-3 border">
+                                <option>Claro</option>
+                                <option>Escuro</option>
+                                <option>Sistema</option>
+                            </select>
+                        </div>
+                        <button type="submit"
+                            class="bg-blue-600 text-white px-4 py-2 rounded shadow hover:bg-blue-700">Salvar
+                            Alterações</button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Users Management -->
+            <div id="admin-users" class="admin-tab-content hidden">
+                <div class="bg-white p-6 rounded-xl shadow-sm">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="text-lg font-bold">Usuários Cadastrados</h3>
+                        <button
+                            class="bg-green-600 text-white px-3 py-1.5 rounded shadow hover:bg-green-700 text-sm">Convidar
+                            Usuário</button>
+                    </div>
+                    <table class="w-full text-sm text-left">
+                        <thead class="text-gray-500 border-b">
+                            <tr>
+                                <th class="py-2">Nome</th>
+                                <th class="py-2">Email</th>
+                                <th class="py-2">Função</th>
+                                <th class="py-2">Status</th>
+                                <th class="py-2">Ação</th>
+                            </tr>
+                        </thead>
+                        <tbody id="user-list-admin">
+                            <!-- Mock Data -->
+                            <tr class="border-b">
+                                <td class="py-3">Admin User</td>
+                                <td class="py-3">admin@pmo.com</td>
+                                <td class="py-3"><span
+                                        class="bg-purple-100 text-purple-800 text-xs font-medium mr-2 px-2.5 py-0.5 rounded">Admin</span>
+                                </td>
+                                <td class="py-3"><span class="text-green-600">Ativo</span></td>
+                                <td class="py-3"><button class="text-red-600 hover:underline">Remover</button></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Integrations -->
+            <div id="admin-integrations" class="admin-tab-content hidden">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="bg-white p-6 rounded-xl shadow-sm border border-l-4 border-l-green-500">
+                        <h3 class="font-bold text-lg mb-2">Supabase Database</h3>
+                        <p class="text-sm text-gray-600 mb-4">Conectado para persistência de dados e autenticação.</p>
+                        <div class="flex items-center gap-2 text-green-600 text-sm font-bold">
+                            <span class="w-2 h-2 bg-green-500 rounded-full"></span> Online
+                        </div>
+                    </div>
+                    <div class="bg-white p-6 rounded-xl shadow-sm border border-l-4 border-l-blue-500">
+                        <h3 class="font-bold text-lg mb-2">OpenAI / Gemini</h3>
+                        <p class="text-sm text-gray-600 mb-4">Geração de insights e análise de riscos.</p>
+                        <button class="text-blue-600 text-sm font-medium hover:underline">Configurar Chave API</button>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Quick Actions FAB (Mobile Only) -->
+    <div class="fixed bottom-6 right-6 md:hidden z-40 group">
+        <div class="absolute bottom-16 right-0 space-y-2 hidden group-hover:block transition-all duration-200">
+            <button class="bg-blue-600 text-white p-3 rounded-full shadow-lg flex items-center gap-2 w-max ml-auto">
+                <span class="text-xs font-bold mr-1">Novo Relatório</span> 📄
+            </button>
+            <button class="bg-red-600 text-white p-3 rounded-full shadow-lg flex items-center gap-2 w-max ml-auto">
+                <span class="text-xs font-bold mr-1">Novo Risco</span> ⚠️
+            </button>
+            <button class="bg-purple-600 text-white p-3 rounded-full shadow-lg flex items-center gap-2 w-max ml-auto">
+                <span class="text-xs font-bold mr-1">Insight IA</span> ✨
+            </button>
+        </div>
+        <button class="bg-slate-800 text-white p-4 rounded-full shadow-xl hover:scale-110 transition-transform">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+            </svg>
+        </button>
+    </div>
+
+    <!-- AI Analysis Modal -->
+    <div id="ai-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-50">
+        <div class="bg-white rounded-xl shadow-2xl w-full max-w-lg overflow-hidden transform transition-all scale-95 opacity-0"
+            id="ai-modal-content">
+            <div class="bg-gradient-to-r from-purple-600 to-indigo-600 p-6 text-white">
+                <h3 class="text-xl font-bold flex items-center gap-2">
+                    ✨ Assistente PMO Inteligente
+                </h3>
+                <p class="text-indigo-100 text-sm mt-1">Análise Inteligente de Projetos</p>
+            </div>
+            <div class="p-6">
+                <!-- Loading State -->
+                <div id="ai-loading" class="hidden flex flex-col items-center py-8">
+                    <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mb-4"></div>
+                    <p class="text-slate-500 animate-pulse">Consultando base de conhecimento...</p>
+                </div>
+
+                <!-- Result State -->
+                <div id="ai-result" class="hidden">
+                    <div class="mb-4">
+                        <span class="text-xs font-bold text-slate-400 uppercase">Resumo Executivo</span>
+                        <p id="ai-summary" class="text-slate-800 mt-1"></p>
+                    </div>
+
+                    <div class="mb-4">
+                        <span class="text-xs font-bold text-slate-400 uppercase">Riscos Identificados</span>
+                        <p id="ai-risks" class="text-slate-800 mt-1"></p>
+                    </div>
+
+                    <div class="bg-indigo-50 p-4 rounded-lg border border-indigo-100">
+                        <span class="text-xs font-bold text-indigo-500 uppercase flex items-center gap-1">
+                            💡 Recomendação
+                        </span>
+                        <p id="ai-recommendation" class="text-indigo-900 font-medium mt-1"></p>
+                    </div>
+                </div>
+            </div>
+            <div class="bg-slate-50 p-4 flex justify-end">
+                <button id="btn-close-ai"
+                    class="text-slate-500 hover:text-slate-800 font-medium text-sm">Fechar</button>
+            </div>
+        </div>
+    </div>
+</body>
+
+</html>

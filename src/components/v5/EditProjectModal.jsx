@@ -3,9 +3,12 @@ import * as Dialog from '@radix-ui/react-dialog';
 import { X, FloppyDisk } from 'phosphor-react';
 import { supabase } from '../../services/supabase';
 
+import { useNavigate } from 'react-router-dom';
+
 export function EditProjectModal({ isOpen, onClose, project, onUpdate }) {
     const [data, setData] = useState({});
     const [loading, setLoading] = useState(false);
+    const navigate = useNavigate();
 
     useEffect(() => {
         if (project) {
@@ -50,6 +53,33 @@ export function EditProjectModal({ isOpen, onClose, project, onUpdate }) {
             console.error(err);
             alert(`Erro ao atualizar projeto: ${err.message}`);
         } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleDelete = async () => {
+        if (!confirm('TEM CERTEZA? Isso apagará o projeto e todas as tarefas/riscos associados permanentemente.')) return;
+        setLoading(true);
+        try {
+            const { error } = await supabase.from('projects').delete().eq('id', project.id);
+            if (error) throw error;
+            navigate('/projects');
+        } catch (err) {
+            alert(`Erro ao excluir: ${err.message}`);
+            setLoading(false);
+        }
+    };
+
+    const handleArchive = async () => {
+        if (!confirm('Arquivar projeto? Status será alterado para "Cancelado".')) return;
+        setLoading(true);
+        try {
+            const { error } = await supabase.from('projects').update({ status: 'Cancelado' }).eq('id', project.id);
+            if (error) throw error;
+            onUpdate();
+            onClose();
+        } catch (err) {
+            alert(`Erro ao arquivar: ${err.message}`);
             setLoading(false);
         }
     };
@@ -146,8 +176,21 @@ export function EditProjectModal({ isOpen, onClose, project, onUpdate }) {
                             <HealthSelect label="Saúde Custo" value={data.health_cost} onChange={v => handleChange('health_cost', v)} />
                         </div>
 
-                        <div className="flex justify-end pt-4">
-                            <button disabled={loading} className="bg-slate-900 text-white px-6 py-2.5 rounded-lg font-bold hover:bg-black transition flex items-center gap-2">
+                        <div className="flex justify-between pt-6 border-t border-slate-100 mt-4">
+                            <div className="flex gap-2">
+                                <button type="button" disabled={loading} onClick={handleDelete} className="bg-red-50 text-red-600 px-4 py-2.5 rounded-lg text-sm font-bold hover:bg-red-100 transition">
+                                    Excluir Projeto
+                                </button>
+                                <button type="button" disabled={loading} onClick={handleArchive} className="bg-slate-100 text-slate-600 px-4 py-2.5 rounded-lg text-sm font-bold hover:bg-slate-200 transition">
+                                    Arquivar
+                                </button>
+                            </div>
+
+                            <button
+                                type="submit"
+                                disabled={loading}
+                                className="bg-slate-900 text-white px-6 py-2.5 rounded-lg font-bold hover:bg-black transition flex items-center gap-2"
+                            >
                                 {loading ? 'Salvando...' : 'Salvar Alterações'}
                             </button>
                         </div>

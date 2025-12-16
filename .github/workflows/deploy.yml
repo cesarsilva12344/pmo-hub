@@ -31,6 +31,14 @@ jobs:
       - name: Install Dependencies
         run: npm ci
 
+      - name: Debug Secrets
+        run: |
+          if [ -n "$VITE_SUPABASE_URL" ]; then echo "VITE_SUPABASE_URL is SET"; else echo "VITE_SUPABASE_URL is NOT SET"; fi
+          if [ -n "$VITE_SUPABASE_ANON_KEY" ]; then echo "VITE_SUPABASE_ANON_KEY is SET"; else echo "VITE_SUPABASE_ANON_KEY is NOT SET"; fi
+        env:
+           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+           VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+
       - name: Build
         run: npm run build
         env:

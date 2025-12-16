@@ -43,12 +43,12 @@ export function EditProjectModal({ isOpen, onClose, project, onUpdate }) {
                 .eq('id', project.id);
 
             if (error) throw error;
-            onUpdate(); // Refresh parent
+            onUpdate();
             onClose();
             alert('Projeto atualizado com sucesso!');
         } catch (err) {
             console.error(err);
-            alert('Erro ao atualizar projeto.');
+            alert(`Erro ao atualizar projeto: ${err.message}`);
         } finally {
             setLoading(false);
         }

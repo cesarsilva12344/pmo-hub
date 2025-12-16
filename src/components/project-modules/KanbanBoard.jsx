@@ -78,8 +78,19 @@ export function KanbanBoard() {
 
     const deleteTask = async (taskId) => {
         if (!confirm('Excluir esta tarefa?')) return;
+
+        // Optimistic update
+        const previousTasks = [...tasks];
         setTasks(tasks.filter(t => t.id !== taskId));
-        await supabase.from('tasks').delete().eq('id', taskId);
+
+        const { error } = await supabase.from('tasks').delete().eq('id', taskId);
+
+        if (error) {
+            console.error(error);
+            alert(`Erro ao excluir tarefa: ${error.message}`);
+            // Revert state
+            setTasks(previousTasks);
+        }
     };
 
     const archiveTask = async (taskId) => {

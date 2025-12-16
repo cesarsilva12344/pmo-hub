@@ -14,20 +14,34 @@ export default function Dashboard() {
 
     const [users, setUsers] = useState([]);
 
+    const [error, setError] = useState(null);
+
     useEffect(() => {
         fetchData();
     }, []);
 
     const fetchData = async () => {
-        const { data: projectsData } = await supabase.from('projects').select('*');
-        const { data: risks } = await supabase.from('project_risks').select('*').gte('probability', 4).gte('impact', 4);
-        const { data: issues } = await supabase.from('project_issues').select('*').eq('priority', 'Critical');
-        const { data: usersData } = await supabase.from('users').select('*');
+        try {
+            const { data: projectsData, error: err1 } = await supabase.from('projects').select('*');
+            if (err1) throw err1;
 
-        if (projectsData) setData(projectsData);
-        if (usersData) setUsers(usersData);
-        setCriticalCount((risks?.length || 0) + (issues?.length || 0));
-        setLoading(false);
+            const { data: risks, error: err2 } = await supabase.from('project_risks').select('*').gte('probability', 4).gte('impact', 4);
+            // Non-critical errors (we can continue without this data if table missing but best to catch)
+            if (err2 && err2.code !== 'PGRST116') console.warn(err2);
+
+            const { data: issues, error: err3 } = await supabase.from('project_issues').select('*').eq('priority', 'Critical');
+
+            const { data: usersData, error: err4 } = await supabase.from('users').select('*');
+
+            if (projectsData) setData(projectsData);
+            if (usersData) setUsers(usersData);
+            setCriticalCount((risks?.length || 0) + (issues?.length || 0));
+        } catch (err) {
+            console.error('Dashboard Error:', err);
+            setError(err.message || 'Erro desconhecido ao carregar dados');
+        } finally {
+            setLoading(false);
+        }
     };
 
     // --- Data Processing for Charts ---
@@ -91,6 +105,7 @@ export default function Dashboard() {
     const formatCurrency = (val) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', notation: 'compact' }).format(val);
 
     if (loading) return <div className="p-10 text-center text-gray-500">Carregando Dashboard...</div>;
+    if (error) return <div className="p-10 text-center text-red-500">Erro: {error}</div>;
 
     return (
         <div className="p-6 bg-slate-50 min-h-screen space-y-6 animate-in fade-in">

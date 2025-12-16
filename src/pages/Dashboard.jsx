@@ -13,6 +13,7 @@ export default function Dashboard() {
     const [loading, setLoading] = useState(true);
 
     const [users, setUsers] = useState([]);
+    const [criticalCount, setCriticalCount] = useState(0);
 
     const [error, setError] = useState(null);
 
